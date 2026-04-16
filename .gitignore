@@ -1,8 +1,8 @@
-# Environment Variables
+# Environment Variables (ŞİFRELER!)
 .env
 
 # Python Virtual Environment
-.venv
+.venv/
 venv/
 env/
 
@@ -14,8 +14,23 @@ env/
 __pycache__/
 *.pyc
 
-# Database
-user_diet.db
+# Eski SQLite Veritabanı
+*.db
 
-# Vector Database (Chroma)
+# Vector Database (Chroma - büyük dosya)
 .chroma/
+
+# Build / Log dosyaları
+build/
+*.log
+build_errors*.txt
+build_output.txt
+build_log.txt
+out.log
+my_build_err.txt
+
+# Android Studio (Eylül'ün klasörü ayrı repoda olmalı)
+CalorieCalculator/
+
+# Dila'nın eski ayrı klasörü (artık kök dizine taşındı)
+bitirme-main/
