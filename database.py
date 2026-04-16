@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Bağlantı adresi (.env yoksa Render panelindeki Environment Variables'dan alır)
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:12345@localhost/yemek_db")
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:12345@localhost/yemek_db").strip()
 
 # Motoru çalıştır
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
