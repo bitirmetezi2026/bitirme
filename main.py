@@ -149,7 +149,8 @@ def update_user_me(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    update_data = user_update.dict(exclude_unset=True)
+    # Android Gson null olanları gönderdiği için None olmayanları filtreliyoruz
+    update_data = {k: v for k, v in user_update.dict(exclude_unset=True).items() if v is not None}
     
     if "email" in update_data and update_data["email"] != current_user.email:
         existing_user = db.query(models.User).filter(models.User.email == update_data["email"]).first()
