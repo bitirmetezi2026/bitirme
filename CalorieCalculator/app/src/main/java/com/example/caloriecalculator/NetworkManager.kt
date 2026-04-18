@@ -196,6 +196,10 @@ object PersistenceManager {
             .remove("meal_snack")
             .apply()
     }
+
+    fun clearUserData() {
+        prefs.edit().clear().apply()
+    }
 }
 
 object RetrofitClient {

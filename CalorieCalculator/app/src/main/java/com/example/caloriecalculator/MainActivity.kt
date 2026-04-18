@@ -206,6 +206,7 @@ fun SettingsScreen(navController: NavController) {
             OutlinedButton(
                 onClick = { 
                     SessionManager.token = null
+                    PersistenceManager.clearUserData()
                     navController.navigate(Screen.Welcome.route) { popUpTo(0) } 
                 },
                 modifier = Modifier.fillMaxWidth(),
