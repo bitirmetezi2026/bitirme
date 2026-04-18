@@ -30,6 +30,8 @@ class AgentState(TypedDict):
     image_base64: str
     ingredients: List[str]
     recipes: dict
+    kalan_kalori: str
+    kisitlamalar: str
 
 def extract_ingredients_node(state: AgentState):
     """
@@ -76,14 +78,22 @@ def recipe_generator_node(state: AgentState):
     
     ingredients_str = "\n- ".join(ingredients)
     
+    diet_info = ""
+    if state.get("kisitlamalar"):
+        diet_info += f"\nKullanıcının diyet kısıtlamaları ve rahatsızlıkları: {state['kisitlamalar']}. DİKKAT: Gösterilen veya listelenen malzemeler arasında bu yasaklı listeye girenler varsa ASLA tarifine dahil etme (örneğin laktoz intoleransı varsa asla sütlü/peynirli bir tarif önerme)."
+    
+    if state.get("kalan_kalori") and state.get("kalan_kalori") != "0":
+        diet_info += f"\nDİKKAT! Kullanıcının bugünkü KALAN KALORİ HAKKI: {state['kalan_kalori']} kcal. Lütfen önereceğin yemek tarifinin porsiyon kalorisi bu kalori miktarına olabildiğince uygun olsun. Eğer fotoğraftaki malzemeler bu enerjiye yetmiyorsa ve çok düşük kalorili kalıyorsa, tarifin yanına ek olarak sağlıklı atıştırmalıklar (örneğin X adet kaloriye denk gelecek ceviz, badem, yoğurt vb.) önererek kaloriyi kullanıcının kalan hedefine yaklaştır."
+
     system_prompt = f"""
 Sen usta bir şef ve uzman bir diyetisyensin. Kullanıcının elindeki malzemelerle yapabileceği 2 veya 3 tane sağlıklı, dengeli ve lezzetli yemek tarifi önermeni istiyorum.
 Tarifleri tamamen TÜRKÇE dilinde detaylı olarak vermelisin.
+{diet_info}
 
 Kullanıcının elindeki malzemeler:
 - {ingredients_str}
 
-Lütfen sadece bu malzemeleri ağırlıklı kullanarak (yağ, tuz, baharat gibi temel mutfak ürünlerini dahil edebilirsin) yaratıcı ve sağlıklı tarifler üret.
+Lütfen sadece bu malzemeleri ağırlıklı kullanarak (yağ, tuz, baharat gibi temel mutfak ürünlerini dahil edebilirsin) yaratıcı ve kısıtlamaları ihlal etmeyen tarifler üret.
     """
     
     messages = [
@@ -113,13 +123,20 @@ workflow.add_edge("generate_recipes", END)
 # Compile graph
 app_graph = workflow.compile()
 
-def process_fridge_image(image_bytes: bytes) -> dict:
+def process_fridge_image(image_bytes: bytes, kalan_kalori: str = None, kisitlamalar: str = None) -> dict:
     """
-    Helper function to be called by FastAPI.
-    Takes image bytes, returns the final state containing recipes.
+    Main entry point function to process an image and return recipe recommendations.
     """
-    base64_image = base64.b64encode(image_bytes).decode('utf-8')
-    initial_state = {"image_base64": base64_image, "ingredients": [], "recipes": {}}
+    image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+    
+    # Run the graph
+    initial_state = {
+        "image_base64": image_base64,
+        "ingredients": [],
+        "recipes": {},
+        "kalan_kalori": kalan_kalori or "",
+        "kisitlamalar": kisitlamalar or ""
+    }
     
     final_state = app_graph.invoke(initial_state)
     return final_state

@@ -22,6 +22,7 @@ class User(Base):
     hedef = Column(String, nullable=True, default="Korumak")
     hedef_hiz = Column(String, nullable=True)
     hedef_kilo = Column(Float, nullable=True)
+    dietary_restrictions = Column(String, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

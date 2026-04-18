@@ -7,6 +7,7 @@ import retrofit2.http.Body
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.Query
 
 // --- DİLA'NIN GÖNDERDİĞİ ŞEMALAR ---
 data class UserCreate(
@@ -20,7 +21,8 @@ data class UserCreate(
     val activity_level: String? = null,
     val hedef: String? = null,
     val hedef_hiz: String? = null,
-    val hedef_kilo: Float? = null
+    val hedef_kilo: Float? = null,
+    val dietary_restrictions: String? = null
 )
 data class LoginItem(val email: String, val password: String)
 data class UserResponse(val id: Int, val email: String, val full_name: String?)
@@ -140,7 +142,9 @@ interface DiyetApi {
     @Multipart
     @POST("recommend-recipes")
     suspend fun getRecipeRecommendations(
-        @Part file: MultipartBody.Part
+        @Part file: MultipartBody.Part,
+        @Query("kalan_kalori") kalanKalori: String? = null,
+        @Query("kisitlamalar") kisitlamalar: String? = null
     ): RecipeResponse
 }
 
@@ -160,6 +164,10 @@ object SessionManager {
     var tempYas: Int = 30
     var tempCinsiyet: String = ""
     var tempActivityLevel: String = ""
+    var tempHedef: String = ""
+    var tempHedefHiz: String = ""
+    var tempHedefKilo: Float = 0f
+    var tempDietary: String = ""
 }
 
 object PersistenceManager {
@@ -206,6 +214,10 @@ object PersistenceManager {
     var hedefKilo: Float
         get() = prefs.getFloat("hedef_kilo_${SessionManager.userId}", 0f)
         set(value) = prefs.edit().putFloat("hedef_kilo_${SessionManager.userId}", value).apply()
+
+    var dietaryRestrictions: String
+        get() = prefs.getString("dietary_restrictions_${SessionManager.userId}", "") ?: ""
+        set(value) = prefs.edit().putString("dietary_restrictions_${SessionManager.userId}", value).apply()
 
     fun getTargetCalories(): Float {
         // 1. BMR Hesapla (Mifflin-St Jeor)

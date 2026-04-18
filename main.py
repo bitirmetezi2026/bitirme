@@ -111,7 +111,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         activity_level=user.activity_level,
         hedef=user.hedef,
         hedef_hiz=user.hedef_hiz,
-        hedef_kilo=user.hedef_kilo
+        hedef_kilo=user.hedef_kilo,
+        dietary_restrictions=user.dietary_restrictions
     )
     db.add(new_user)
     db.commit()
@@ -362,7 +363,11 @@ async def analyze_food(file: UploadFile = File(...)):
 # =============================================
 
 @app.post("/recommend-recipes")
-async def forward_to_ai_agent(file: UploadFile = File(...)):
+async def forward_to_ai_agent(
+    file: UploadFile = File(...),
+    kalan_kalori: str = Query(None),
+    kisitlamalar: str = Query(None)
+):
     """Buzdolabı fotoğrafından tarif önerisi (Ne Yesem)"""
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Sadece resim formatında dosya yükleyebilirsiniz.")
@@ -371,7 +376,7 @@ async def forward_to_ai_agent(file: UploadFile = File(...)):
         contents = await file.read()
         
         # Süreci LangGraph ajanına gönderiyoruz
-        result_state = process_fridge_image(contents)
+        result_state = process_fridge_image(contents, kalan_kalori, kisitlamalar)
         
         return {
             "status": "success",

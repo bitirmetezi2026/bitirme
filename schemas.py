@@ -19,6 +19,7 @@ class UserCreate(BaseModel):
     hedef: Optional[str] = "Korumak"
     hedef_hiz: Optional[str] = None
     hedef_kilo: Optional[float] = None
+    dietary_restrictions: Optional[str] = None
 
 class LoginItem(BaseModel):
     email: str
@@ -37,6 +38,7 @@ class UserResponse(BaseModel):
     hedef: Optional[str] = None
     hedef_hiz: Optional[str] = None
     hedef_kilo: Optional[float] = None
+    dietary_restrictions: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -55,6 +57,7 @@ class UserUpdate(BaseModel):
     hedef: Optional[str] = None
     hedef_hiz: Optional[str] = None
     hedef_kilo: Optional[float] = None
+    dietary_restrictions: Optional[str] = None
 
 # ========================
 # YEMEK ŞEMALARI

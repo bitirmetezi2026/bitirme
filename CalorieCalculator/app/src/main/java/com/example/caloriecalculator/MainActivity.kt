@@ -82,6 +82,7 @@ sealed class Screen(val route: String) {
     data object ProfileSetup : Screen("profile_setup")
     data object ActivityLevel : Screen("activity_level")
     data object GoalSetup : Screen("goal_setup")
+    data object DietarySetup : Screen("dietary_setup")
     data object Home : Screen("home")
     data object Chatbot : Screen("chatbot")
     data object Calculate : Screen("calculate")
@@ -108,7 +109,8 @@ fun NavGraphBuilder.authGraph(navController: NavController) {
         composable(Screen.Register.route) { RegisterScreen(navController) }
         composable(Screen.ProfileSetup.route) { ProfileSetupScreen(navController = navController) }
         composable(Screen.ActivityLevel.route) { ActivityLevelScreen(navController = navController) }
-        composable(Screen.GoalSetup.route) { GoalSetupScreen(navController = navController, onSetupComplete = { navController.navigate("main_graph") { popUpTo("auth_graph") { inclusive = true } } }) }
+        composable(Screen.GoalSetup.route) { GoalSetupScreen(navController = navController) }
+        composable(Screen.DietarySetup.route) { DietarySetupScreen(navController = navController, onSetupComplete = { navController.navigate("main_graph") { popUpTo("auth_graph") { inclusive = true } } }) }
     }
 }
 
@@ -1052,7 +1054,7 @@ fun ActivityLevelScreen(navController: NavController) {
 }
 
 @Composable
-fun GoalSetupScreen(navController: NavController, onSetupComplete: () -> Unit) {
+fun GoalSetupScreen(navController: NavController) {
     var selectedGoal by remember { mutableStateOf("Kilo Vermek") }
     var targetWeight by remember { mutableStateOf("") }
     
@@ -1165,21 +1167,99 @@ fun GoalSetupScreen(navController: NavController, onSetupComplete: () -> Unit) {
                         }
                     } else "Korumak"
 
+                    SessionManager.tempHedef = selectedGoal
+                    SessionManager.tempHedefHiz = if(selectedGoal == "Korumak") "" else finalSpeed
+                    SessionManager.tempHedefKilo = floatTarget
+                    navController.navigate(Screen.DietarySetup.route)
+                },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+            ) {
+                Text("İleri", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+fun DietarySetupScreen(navController: NavController, onSetupComplete: () -> Unit) {
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val restrictions = listOf(
+        "Diyabet (Şeker Kısıtlı)",
+        "Hipertansiyon (Tuz Kısıtlı)",
+        "Laktoz İntoleransı",
+        "Gluten Hassasiyeti",
+        "Vegan / Vejetaryen"
+    )
+    
+    // Checkbox durumlarını tutan map
+    val checkedStates = remember { mutableStateMapOf<String, Boolean>().apply {
+        restrictions.forEach { this[it] = false }
+    }}
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AuthBackground()
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(modifier = Modifier.height(80.dp))
+            Text("Diyet Kısıtlamaların", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("Sana uygun tarifleri ve öğünleri sunabilmemiz için rahatsızlıklarını veya diyet seçimini işaretle. (İsteğe Bağlı)", fontSize = 14.sp, color = TextGray, textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(30.dp))
+
+            restrictions.forEach { restriction ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .clickable { checkedStates[restriction] = !(checkedStates[restriction] ?: false) }
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.Checkbox(
+                        checked = checkedStates[restriction] ?: false,
+                        onCheckedChange = { isChecked -> checkedStates[restriction] = isChecked },
+                        colors = androidx.compose.material3.CheckboxDefaults.colors(checkedColor = PrimaryGreen)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = restriction, fontSize = 16.sp, color = Color.Black)
+                }
+                androidx.compose.material3.Divider(color = Color.LightGray.copy(alpha = 0.5f), thickness = 1.dp)
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            if (errorMessage != null) {
+                Text(errorMessage!!, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = {
+                    val selectedRestrictions = checkedStates.filter { it.value }.keys.joinToString(", ")
+                    SessionManager.tempDietary = selectedRestrictions
+                    
                     isLoading = true
                     coroutineScope.launch {
                         try {
                             val userPayload = UserCreate(
                                 email = SessionManager.tempEmail,
                                 password = SessionManager.tempPassword,
-                                full_name = SessionManager.tempName.ifBlank { null },
+                                full_name = SessionManager.tempName.takeIf { it.isNotBlank() },
                                 boy_cm = SessionManager.tempBoy,
                                 kilo_kg = SessionManager.tempKilo,
                                 yas = SessionManager.tempYas,
-                                cinsiyet = SessionManager.tempCinsiyet.ifBlank { "Belirtilmemiş" },
-                                activity_level = SessionManager.tempActivityLevel.ifBlank { "Hareketsiz" },
-                                hedef = selectedGoal,
-                                hedef_hiz = if(selectedGoal == "Korumak") null else finalSpeed,
-                                hedef_kilo = targetWeight.toFloatOrNull()
+                                cinsiyet = SessionManager.tempCinsiyet.takeIf { it.isNotBlank() } ?: "Belirtilmemiş",
+                                activity_level = SessionManager.tempActivityLevel.takeIf { it.isNotBlank() } ?: "Hareketsiz",
+                                hedef = SessionManager.tempHedef,
+                                hedef_hiz = SessionManager.tempHedefHiz.takeIf { it.isNotBlank() },
+                                hedef_kilo = SessionManager.tempHedefKilo,
+                                dietary_restrictions = selectedRestrictions.takeIf { it.isNotBlank() }
                             )
                             RetrofitClient.instance.registerUser(userPayload)
                             
@@ -1192,11 +1272,12 @@ fun GoalSetupScreen(navController: NavController, onSetupComplete: () -> Unit) {
                             PersistenceManager.boyCm = SessionManager.tempBoy
                             PersistenceManager.kiloKg = SessionManager.tempKilo
                             PersistenceManager.yas = SessionManager.tempYas
-                            PersistenceManager.cinsiyet = SessionManager.tempCinsiyet.ifBlank { "Belirtilmemiş" }
-                            PersistenceManager.activityLevel = SessionManager.tempActivityLevel.ifBlank { "Hareketsiz" }
-                            PersistenceManager.hedef = selectedGoal
-                            PersistenceManager.hedefHiz = finalSpeed
-                            PersistenceManager.hedefKilo = targetWeight.toFloatOrNull() ?: 0f
+                            PersistenceManager.cinsiyet = SessionManager.tempCinsiyet.takeIf { it.isNotBlank() } ?: "Belirtilmemiş"
+                            PersistenceManager.activityLevel = SessionManager.tempActivityLevel.takeIf { it.isNotBlank() } ?: "Hareketsiz"
+                            PersistenceManager.hedef = SessionManager.tempHedef
+                            PersistenceManager.hedefHiz = SessionManager.tempHedefHiz
+                            PersistenceManager.hedefKilo = SessionManager.tempHedefKilo
+                            PersistenceManager.dietaryRestrictions = selectedRestrictions
 
                             onSetupComplete()
                         } catch (e: Exception) {
@@ -1212,7 +1293,7 @@ fun GoalSetupScreen(navController: NavController, onSetupComplete: () -> Unit) {
                 enabled = !isLoading
             ) {
                 if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                else Text("Kaydı Tamamla!", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                else Text("Kayıt Ol", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(40.dp))
         }
