@@ -622,7 +622,12 @@ fun StatisticScreen() {
                             else if (selectedImageUri != null) ImageUtils.uriToMultipart(selectedImageUri!!, context) else null
                             
                             if (imagePart != null) {
-                                recipeResult = RetrofitClient.instance.getRecipeRecommendations(imagePart)
+                                val maxCal = PersistenceManager.getTargetCalories()
+                                val eatenCal = PersistenceManager.getMealCalorie("breakfast") + PersistenceManager.getMealCalorie("lunch") + PersistenceManager.getMealCalorie("dinner") + PersistenceManager.getMealCalorie("snack")
+                                val leftCal = (maxCal - eatenCal).toInt().coerceAtLeast(0).toString()
+                                val restr = PersistenceManager.dietaryRestrictions.ifBlank { null }
+                                
+                                recipeResult = RetrofitClient.instance.getRecipeRecommendations(imagePart, kalanKalori = leftCal, kisitlamalar = restr)
                             } else {
                                 errorMessage = "Lütfen önce bir fotoğraf çekin veya seçin."
                             }
