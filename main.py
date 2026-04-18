@@ -11,6 +11,8 @@ from jose import jwt, JWTError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime
 import httpx
+import base64
+from ai_graph import app as vision_app
 
 import utils
 import models
@@ -317,36 +319,38 @@ def chat_with_ai(
 # 8. YEMEK ANALİZ (FOTOĞRAF -> KALORİ)
 # =============================================
 
-MEHMET_AI_URL = os.getenv("MEHMET_AI_URL", "http://192.168.1.11:8000/analyze")
-
 @app.post("/analyze")
-async def analyze_food(
-    file: UploadFile = File(...)
-):
-    """Fotoğraftan yemek tanıma - Mehmet'in yapay zeka servisine proxy."""
-    image_data = await file.read()
-    
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(
-                MEHMET_AI_URL,
-                files={"file": (file.filename, image_data, file.content_type)},
-                timeout=90.0
-            )
-            if response.status_code == 200:
-                return response.json()
+async def analyze_food(file: UploadFile = File(...)):
+    """Fotoğraftan yemek tanıma - Doğrudan LangGraph entegrasyonu"""
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Lutfen sadece resim (image) dosyasi yukleyin.")
+        
+    try:
+        contents = await file.read()
+        base64_string = base64.b64encode(contents).decode('utf-8')
+        image_data = f"data:{file.content_type};base64,{base64_string}"
+        
+        initial_state = {"image_source": image_data}
+        result_state = vision_app.invoke(initial_state)
+        analysis = result_state.get("food_analysis")
+        
+        if analysis:
+            if hasattr(analysis, "model_dump"):
+                return analysis.model_dump()
             else:
-                return {"error": "AI servisi cevap veremedi."}
-        except Exception as e:
-            print(f"⚠️ Yemek Analiz Hatası (Mehmet sunucusu kapalı olabilir): {e}")
-            return {
-                "food_name": "Demo Yemek (AI Kapalı)",
-                "calories": 350,
-                "protein": 20,
-                "fat": 10,
-                "carbs": 40,
-                "note": "Mehmet'in sunucusu kapalı olduğu için demo veri döndü."
-            }
+                return analysis.dict()
+                
+        return {"error": "Analiz tamamlanamadi. Lutfen tekrar deneyin."}
+    except Exception as e:
+        print(f"⚠️ Yemek Analiz Hatası: {e}")
+        return {
+            "food_name": "Sistem Hatası",
+            "calories": 0,
+            "protein": 0,
+            "fat": 0,
+            "carbs": 0,
+            "note": str(e)
+        }
 
 # =============================================
 # 9. TARİF ÖNERİSİ (NE YESEM?)
@@ -354,27 +358,22 @@ async def analyze_food(
 
 @app.post("/recommend-recipes")
 async def forward_to_ai_agent(file: UploadFile = File(...)):
-    """Fotoğraftaki malzemeleri tanıyıp tarif öneren endpoint."""
-    try:
-        file_bytes = await file.read()
-        async with httpx.AsyncClient(timeout=90.0) as client:
-            files = {"file": (file.filename, file_bytes, file.content_type)}
-            response = await client.post(MEHMET_AI_URL, files=files)
-            
-            if response.status_code == 200:
-                return JSONResponse(content=response.json())
-            else:
-                error_detail = response.text if response.text else "AI sunucusunda hata oluştu."
-                raise HTTPException(status_code=response.status_code, detail=f"AI Hatası: {error_detail}")
-                
-    except httpx.ConnectError:
-        raise HTTPException(status_code=503, detail="Mehmet'in AI sunucusuna bağlanılamıyor.")
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="AI sunucusu 90 saniye içinde cevap vermedi.")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """API güncellenene kadar geçici yanıt"""
+    return {
+        "status": "success",
+        "detected_ingredients": ["Tarif modülü bakımda"],
+        "recommendations": {
+            "recipes": [
+                {
+                    "name": "Şu an bakımdayız",
+                    "description": "Tarif önerme zekası sisteme entegre ediliyor.",
+                    "ingredients": ["Yok"],
+                    "steps": ["Lütfen daha sonra tekrar deneyin."],
+                    "calories": "0"
+                }
+            ]
+        }
+    }
 
 # =============================================
 # SUNUCU BAŞLATMA
