@@ -79,6 +79,7 @@ sealed class Screen(val route: String) {
     data object Welcome : Screen("welcome")
     data object Login : Screen("login")
     data object Register : Screen("register")
+    data object ProfileSetup : Screen("profile_setup")
     data object Home : Screen("home")
     data object Chatbot : Screen("chatbot")
     data object Calculate : Screen("calculate")
@@ -103,6 +104,7 @@ fun NavGraphBuilder.authGraph(navController: NavController) {
         composable(Screen.Welcome.route) { WelcomeScreen(navController) }
         composable(Screen.Login.route) { LoginScreen(navController = navController, onLoginSuccess = { navController.navigate("main_graph") { popUpTo("auth_graph") { inclusive = true } } }) }
         composable(Screen.Register.route) { RegisterScreen(navController) }
+        composable(Screen.ProfileSetup.route) { ProfileSetupScreen(navController = navController, onSetupComplete = { navController.navigate("main_graph") { popUpTo("auth_graph") { inclusive = true } } }) }
     }
 }
 
@@ -906,20 +908,111 @@ fun RegisterScreen(navController: NavController) {
         Spacer(modifier = Modifier.height(40.dp))
         Button(
             onClick = {
-                isLoading = true
-                coroutineScope.launch {
-                    try { RetrofitClient.instance.registerUser(UserCreate(email, password, fullName)); navController.navigate(Screen.Login.route) }
-                    catch (e: Exception) { } finally { isLoading = false }
+                if (fullName.isNotBlank() && email.isNotBlank() && password.isNotBlank()) {
+                    SessionManager.tempName = fullName
+                    SessionManager.tempEmail = email
+                    SessionManager.tempPassword = password
+                    navController.navigate(Screen.ProfileSetup.route)
                 }
             },
-            modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen), enabled = !isLoading
+            modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
         ) {
-            if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-            else Text(text = stringResource(R.string.signup_title), color = Color.White, fontSize = 16.sp)
+            Text(text = "Devam Et", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.weight(1f)); SignInText(onSignInClick = { navController.navigate(Screen.Login.route) })
         Spacer(modifier = Modifier.height(40.dp))
     }
+    }
+}
+
+@Composable
+fun ProfileSetupScreen(navController: NavController, onSetupComplete: () -> Unit) {
+    var boyInput by remember { mutableStateOf("") }
+    var kiloInput by remember { mutableStateOf("") }
+    var yasInput by remember { mutableStateOf("") }
+    var cinsiyetInput by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AuthBackground()
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(modifier = Modifier.height(80.dp))
+            Text("Profilini Tamamla", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Sana en uygun kaloriyi hesaplayabilmemiz için bu bilgilere ihtiyacımız var.", fontSize = 14.sp, color = TextGray, textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(40.dp))
+            
+            InputTextField(value = boyInput, onValueChange = { boyInput = it }, label = "Boy (Örn: 175)")
+            Spacer(modifier = Modifier.height(16.dp))
+            InputTextField(value = kiloInput, onValueChange = { kiloInput = it }, label = "Kilo (Örn: 70)")
+            Spacer(modifier = Modifier.height(16.dp))
+            InputTextField(value = yasInput, onValueChange = { yasInput = it }, label = "Yaş (Örn: 24)")
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text("Cinsiyet", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = cinsiyetInput == "Erkek", onClick = { cinsiyetInput = "Erkek" }, colors = RadioButtonDefaults.colors(selectedColor = PrimaryGreen))
+                    Text("Erkek", modifier = Modifier.clickable { cinsiyetInput = "Erkek" })
+                    Spacer(modifier = Modifier.width(16.dp))
+                    RadioButton(selected = cinsiyetInput == "Kadın", onClick = { cinsiyetInput = "Kadın" }, colors = RadioButtonDefaults.colors(selectedColor = PrimaryGreen))
+                    Text("Kadın", modifier = Modifier.clickable { cinsiyetInput = "Kadın" })
+                }
+            }
+            if (errorMessage != null) {
+                Text(errorMessage!!, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+            Spacer(modifier = Modifier.height(40.dp))
+            
+            Button(
+                onClick = {
+                    isLoading = true
+                    coroutineScope.launch {
+                        try {
+                            val userPayload = UserCreate(
+                                email = SessionManager.tempEmail,
+                                password = SessionManager.tempPassword,
+                                full_name = SessionManager.tempName.ifBlank { null },
+                                boy_cm = boyInput.toFloatOrNull(),
+                                kilo_kg = kiloInput.toFloatOrNull(),
+                                yas = yasInput.toIntOrNull(),
+                                cinsiyet = cinsiyetInput.ifBlank { "Belirtilmemiş" }
+                            )
+                            // 1. Kayıt Ol
+                            RetrofitClient.instance.registerUser(userPayload)
+                            
+                            // 2. Giriş Yap (Token al)
+                            val loginResponse = RetrofitClient.instance.loginUser(LoginItem(SessionManager.tempEmail, SessionManager.tempPassword))
+                            SessionManager.token = "Bearer ${loginResponse.access_token}"
+                            SessionManager.userId = loginResponse.user_id
+                            SessionManager.userName = loginResponse.full_name ?: SessionManager.tempName
+
+                            // 3. Lokal verileri de cihaz hafızasına kaydet (PersistenceManager)
+                            PersistenceManager.boyCm = boyInput.toFloatOrNull() ?: 170.0f
+                            PersistenceManager.kiloKg = kiloInput.toFloatOrNull() ?: 70.0f
+                            PersistenceManager.yas = yasInput.toIntOrNull() ?: 30
+                            PersistenceManager.cinsiyet = cinsiyetInput.ifBlank { "Belirtilmemiş" }
+
+                            onSetupComplete()
+                        } catch (e: Exception) {
+                            errorMessage = "Hata: ${e.localizedMessage}"
+                        } finally {
+                            isLoading = false
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                enabled = !isLoading
+            ) {
+                if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                else Text("Başla!", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(40.dp))
+        }
     }
 }
 

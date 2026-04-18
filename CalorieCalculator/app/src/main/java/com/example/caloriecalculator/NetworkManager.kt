@@ -9,7 +9,15 @@ import retrofit2.http.POST
 import retrofit2.http.Part
 
 // --- DİLA'NIN GÖNDERDİĞİ ŞEMALAR ---
-data class UserCreate(val email: String, val password: String, val full_name: String? = null)
+data class UserCreate(
+    val email: String, 
+    val password: String, 
+    val full_name: String? = null,
+    val boy_cm: Float? = null,
+    val kilo_kg: Float? = null,
+    val yas: Int? = null,
+    val cinsiyet: String? = null
+)
 data class LoginItem(val email: String, val password: String)
 data class UserResponse(val id: Int, val email: String, val full_name: String?)
 
@@ -138,6 +146,11 @@ object SessionManager {
     var token: String? = null
     var userName: String = "Kullanıcı"
     var userId: Int = 0
+    
+    // Kayıt anında ara sayfalarda geçici tutulan veriler
+    var tempEmail: String = ""
+    var tempPassword: String = ""
+    var tempName: String = ""
 }
 
 object PersistenceManager {
