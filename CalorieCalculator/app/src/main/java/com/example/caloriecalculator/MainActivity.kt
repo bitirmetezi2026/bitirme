@@ -206,7 +206,6 @@ fun SettingsScreen(navController: NavController) {
             OutlinedButton(
                 onClick = { 
                     SessionManager.token = null
-                    PersistenceManager.clearUserData()
                     navController.navigate(Screen.Welcome.route) { popUpTo(0) } 
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -993,7 +992,6 @@ fun ProfileSetupScreen(navController: NavController, onSetupComplete: () -> Unit
 
                             // 3. Lokal verileri de cihaz hafızasına kaydet (PersistenceManager)
                             PersistenceManager.init(context)
-                            PersistenceManager.clearUserData() // Eski verileri siliyoruz ki kaloriler vb. geçmesin!
                             PersistenceManager.boyCm = boyInput.toFloatOrNull() ?: 170.0f
                             PersistenceManager.kiloKg = kiloInput.toFloatOrNull() ?: 70.0f
                             PersistenceManager.yas = yasInput.toIntOrNull() ?: 30

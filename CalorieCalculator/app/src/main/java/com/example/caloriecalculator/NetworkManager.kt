@@ -163,42 +163,43 @@ object PersistenceManager {
     }
 
     var lastSavedDate: String
-        get() = prefs.getString("last_saved_date", "") ?: ""
-        set(value) = prefs.edit().putString("last_saved_date", value).apply()
+        get() = prefs.getString("last_saved_${SessionManager.userId}", "") ?: ""
+        set(value) = prefs.edit().putString("last_saved_${SessionManager.userId}", value).apply()
 
     var boyCm: Float
-        get() = prefs.getFloat("boy_cm", 170f)
-        set(value) = prefs.edit().putFloat("boy_cm", value).apply()
+        get() = prefs.getFloat("boy_cm_${SessionManager.userId}", 170f)
+        set(value) = prefs.edit().putFloat("boy_cm_${SessionManager.userId}", value).apply()
 
     var kiloKg: Float
-        get() = prefs.getFloat("kilo_kg", 70f)
-        set(value) = prefs.edit().putFloat("kilo_kg", value).apply()
+        get() = prefs.getFloat("kilo_kg_${SessionManager.userId}", 70f)
+        set(value) = prefs.edit().putFloat("kilo_kg_${SessionManager.userId}", value).apply()
 
     var yas: Int
-        get() = prefs.getInt("yas", 30)
-        set(value) = prefs.edit().putInt("yas", value).apply()
+        get() = prefs.getInt("yas_${SessionManager.userId}", 30)
+        set(value) = prefs.edit().putInt("yas_${SessionManager.userId}", value).apply()
 
     var cinsiyet: String
-        get() = prefs.getString("cinsiyet", "Kadın") ?: "Kadın"
-        set(value) = prefs.edit().putString("cinsiyet", value).apply()
+        get() = prefs.getString("cinsiyet_${SessionManager.userId}", "Kadın") ?: "Kadın"
+        set(value) = prefs.edit().putString("cinsiyet_${SessionManager.userId}", value).apply()
 
-    fun getMealCalorie(mealId: String): Float = prefs.getFloat("meal_$mealId", 0f)
-    fun saveMealCalorie(mealId: String, calories: Float) = prefs.edit().putFloat("meal_$mealId", calories).apply()
+    fun getMealCalorie(mealId: String): Float = prefs.getFloat("meal_${SessionManager.userId}_$mealId", 0f)
+    fun saveMealCalorie(mealId: String, calories: Float) = prefs.edit().putFloat("meal_${SessionManager.userId}_$mealId", calories).apply()
 
-    fun getHistory(dayIndex: Int): Float = prefs.getFloat("hist_$dayIndex", 0f)
-    fun saveHistory(dayIndex: Int, totalCalories: Float) = prefs.edit().putFloat("hist_$dayIndex", totalCalories).apply()
+    fun getHistory(dayIndex: Int): Float = prefs.getFloat("hist_${SessionManager.userId}_$dayIndex", 0f)
+    fun saveHistory(dayIndex: Int, totalCalories: Float) = prefs.edit().putFloat("hist_${SessionManager.userId}_$dayIndex", totalCalories).apply()
     
     fun resetTodayCalories() {
         prefs.edit()
-            .remove("meal_breakfast")
-            .remove("meal_lunch")
-            .remove("meal_dinner")
-            .remove("meal_snack")
+            .remove("meal_${SessionManager.userId}_breakfast")
+            .remove("meal_${SessionManager.userId}_lunch")
+            .remove("meal_${SessionManager.userId}_dinner")
+            .remove("meal_${SessionManager.userId}_snack")
             .apply()
     }
 
     fun clearUserData() {
-        prefs.edit().clear().apply()
+        // Artık veriler kullanıcıya (userId) özel tutulduğu için SharedPreferences'ı tamamen sıfırlamayacağız.
+        // Böylelikle Ahmet çıkıp Mehmet girse bile, Ahmet'in verileri Mehmet'i veya Ahmet tekrar girdiğinde kendini silmez.
     }
 }
 
