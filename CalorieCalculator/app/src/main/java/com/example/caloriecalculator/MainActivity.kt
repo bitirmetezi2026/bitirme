@@ -81,6 +81,7 @@ sealed class Screen(val route: String) {
     data object Register : Screen("register")
     data object ProfileSetup : Screen("profile_setup")
     data object ActivityLevel : Screen("activity_level")
+    data object GoalSetup : Screen("goal_setup")
     data object Home : Screen("home")
     data object Chatbot : Screen("chatbot")
     data object Calculate : Screen("calculate")
@@ -106,7 +107,8 @@ fun NavGraphBuilder.authGraph(navController: NavController) {
         composable(Screen.Login.route) { LoginScreen(navController = navController, onLoginSuccess = { navController.navigate("main_graph") { popUpTo("auth_graph") { inclusive = true } } }) }
         composable(Screen.Register.route) { RegisterScreen(navController) }
         composable(Screen.ProfileSetup.route) { ProfileSetupScreen(navController = navController) }
-        composable(Screen.ActivityLevel.route) { ActivityLevelScreen(navController = navController, onSetupComplete = { navController.navigate("main_graph") { popUpTo("auth_graph") { inclusive = true } } }) }
+        composable(Screen.ActivityLevel.route) { ActivityLevelScreen(navController = navController) }
+        composable(Screen.GoalSetup.route) { GoalSetupScreen(navController = navController, onSetupComplete = { navController.navigate("main_graph") { popUpTo("auth_graph") { inclusive = true } } }) }
     }
 }
 
@@ -984,7 +986,7 @@ fun ProfileSetupScreen(navController: NavController) {
 }
 
 @Composable
-fun ActivityLevelScreen(navController: NavController, onSetupComplete: () -> Unit) {
+fun ActivityLevelScreen(navController: NavController) {
     var selectedLevel by remember { mutableStateOf("Hareketsiz") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -1035,6 +1037,120 @@ fun ActivityLevelScreen(navController: NavController, onSetupComplete: () -> Uni
 
             Button(
                 onClick = {
+                    SessionManager.tempActivityLevel = selectedLevel
+                    navController.navigate(Screen.GoalSetup.route)
+                },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+            ) {
+                Text("İleri", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+fun GoalSetupScreen(navController: NavController, onSetupComplete: () -> Unit) {
+    var selectedGoal by remember { mutableStateOf("Kilo Vermek") }
+    var targetWeight by remember { mutableStateOf("") }
+    
+    // Hız seçimi için Slider durumları (Sadece Vermek ve Almak için geçerli)
+    var loseSpeedIndex by remember { mutableStateOf(1f) } // 0:Yavaş, 1:İdeal, 2:Agresif
+    var gainSpeedIndex by remember { mutableStateOf(0f) } // 0:Kas Odaklı, 1:Hızlı Kilo
+    
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val goals = listOf("Kilo Vermek", "Kilo Almak", "Korumak")
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AuthBackground()
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(modifier = Modifier.height(80.dp))
+            Text("Son Olarak Hedefin Nedir?", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("Sana özel kalori ve makro profilini oluşturmamız için amacını bilmeliyiz.", fontSize = 14.sp, color = TextGray, textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(30.dp))
+
+            goals.forEach { goal ->
+                val isSelected = selectedGoal == goal
+                Card(
+                    modifier = Modifier.fillMaxWidth().height(60.dp).clickable { selectedGoal = goal },
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, if (isSelected) PrimaryGreen else Color.Transparent),
+                    colors = CardDefaults.cardColors(containerColor = if (isSelected) LightGreenBg else Color.White)
+                ) {
+                    Row(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = isSelected, onClick = { selectedGoal = goal }, colors = RadioButtonDefaults.colors(selectedColor = PrimaryGreen))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(goal, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = if (isSelected) PrimaryGreen else Color.Black)
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            if (selectedGoal != "Korumak") {
+                InputTextField(value = targetWeight, onValueChange = { targetWeight = it }, label = "Hedef Kilo (Örn: 65)")
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Text("Hız ve Tempon:", fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                if (selectedGoal == "Kilo Vermek") {
+                    androidx.compose.material3.Slider(
+                        value = loseSpeedIndex,
+                        onValueChange = { loseSpeedIndex = it },
+                        valueRange = 0f..2f,
+                        steps = 1,
+                        colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = PrimaryGreen, activeTrackColor = PrimaryGreen)
+                    )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Yavaş (-0.25)", fontSize = 12.sp, color = if(loseSpeedIndex==0f) PrimaryGreen else TextGray)
+                        Text("İdeal (-0.5)", fontSize = 12.sp, color = if(loseSpeedIndex==1f) PrimaryGreen else TextGray)
+                        Text("Agresif (-1.0)", fontSize = 12.sp, color = if(loseSpeedIndex==2f) PrimaryGreen else TextGray)
+                    }
+                } else if (selectedGoal == "Kilo Almak") {
+                    androidx.compose.material3.Slider(
+                        value = gainSpeedIndex,
+                        onValueChange = { gainSpeedIndex = it },
+                        valueRange = 0f..1f,
+                        steps = 0,
+                        colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = PrimaryGreen, activeTrackColor = PrimaryGreen)
+                    )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Kas Odaklı (Yavaş)", fontSize = 12.sp, color = if(gainSpeedIndex==0f) PrimaryGreen else TextGray)
+                        Text("Hızlı Kilo", fontSize = 12.sp, color = if(gainSpeedIndex==1f) PrimaryGreen else TextGray)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            if (errorMessage != null) {
+                Text(errorMessage!!, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = {
+                    val finalSpeed = if (selectedGoal == "Kilo Vermek") {
+                        when (loseSpeedIndex) {
+                            0f -> "0.25 (Yavaş)"
+                            1f -> "0.5 (İdeal)"
+                            else -> "1.0 (Agresif)"
+                        }
+                    } else if (selectedGoal == "Kilo Almak") {
+                        when (gainSpeedIndex) {
+                            0f -> "Kas Odaklı"
+                            else -> "Hızlı"
+                        }
+                    } else "Korumak"
+
                     isLoading = true
                     coroutineScope.launch {
                         try {
@@ -1046,7 +1162,10 @@ fun ActivityLevelScreen(navController: NavController, onSetupComplete: () -> Uni
                                 kilo_kg = SessionManager.tempKilo,
                                 yas = SessionManager.tempYas,
                                 cinsiyet = SessionManager.tempCinsiyet.ifBlank { "Belirtilmemiş" },
-                                activity_level = selectedLevel
+                                activity_level = SessionManager.tempActivityLevel.ifBlank { "Hareketsiz" },
+                                hedef = selectedGoal,
+                                hedef_hiz = if(selectedGoal == "Korumak") null else finalSpeed,
+                                hedef_kilo = targetWeight.toFloatOrNull()
                             )
                             RetrofitClient.instance.registerUser(userPayload)
                             
@@ -1060,7 +1179,10 @@ fun ActivityLevelScreen(navController: NavController, onSetupComplete: () -> Uni
                             PersistenceManager.kiloKg = SessionManager.tempKilo
                             PersistenceManager.yas = SessionManager.tempYas
                             PersistenceManager.cinsiyet = SessionManager.tempCinsiyet.ifBlank { "Belirtilmemiş" }
-                            PersistenceManager.activityLevel = selectedLevel
+                            PersistenceManager.activityLevel = SessionManager.tempActivityLevel.ifBlank { "Hareketsiz" }
+                            PersistenceManager.hedef = selectedGoal
+                            PersistenceManager.hedefHiz = finalSpeed
+                            PersistenceManager.hedefKilo = targetWeight.toFloatOrNull() ?: 0f
 
                             onSetupComplete()
                         } catch (e: Exception) {
@@ -1076,7 +1198,7 @@ fun ActivityLevelScreen(navController: NavController, onSetupComplete: () -> Uni
                 enabled = !isLoading
             ) {
                 if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                else Text("Tamamla ve Başla!", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                else Text("Kaydı Tamamla!", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(40.dp))
         }

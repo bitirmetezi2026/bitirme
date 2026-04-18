@@ -19,6 +19,9 @@ class User(Base):
     cinsiyet = Column(String, nullable=True)  # "Erkek", "Kadın" veya "Belirtilmemiş"
     language = Column(String, nullable=True, default="English")
     activity_level = Column(String, nullable=True, default="Hareketsiz")
+    hedef = Column(String, nullable=True, default="Korumak")
+    hedef_hiz = Column(String, nullable=True)
+    hedef_kilo = Column(Float, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

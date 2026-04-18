@@ -17,7 +17,10 @@ data class UserCreate(
     val kilo_kg: Float? = null,
     val yas: Int? = null,
     val cinsiyet: String? = null,
-    val activity_level: String? = null
+    val activity_level: String? = null,
+    val hedef: String? = null,
+    val hedef_hiz: String? = null,
+    val hedef_kilo: Float? = null
 )
 data class LoginItem(val email: String, val password: String)
 data class UserResponse(val id: Int, val email: String, val full_name: String?)
@@ -156,6 +159,7 @@ object SessionManager {
     var tempKilo: Float = 70.0f
     var tempYas: Int = 30
     var tempCinsiyet: String = ""
+    var tempActivityLevel: String = ""
 }
 
 object PersistenceManager {
@@ -190,6 +194,18 @@ object PersistenceManager {
     var activityLevel: String
         get() = prefs.getString("activity_level_${SessionManager.userId}", "Hareketsiz") ?: "Hareketsiz"
         set(value) = prefs.edit().putString("activity_level_${SessionManager.userId}", value).apply()
+
+    var hedef: String
+        get() = prefs.getString("hedef_${SessionManager.userId}", "Korumak") ?: "Korumak"
+        set(value) = prefs.edit().putString("hedef_${SessionManager.userId}", value).apply()
+
+    var hedefHiz: String
+        get() = prefs.getString("hedef_hiz_${SessionManager.userId}", "") ?: ""
+        set(value) = prefs.edit().putString("hedef_hiz_${SessionManager.userId}", value).apply()
+
+    var hedefKilo: Float
+        get() = prefs.getFloat("hedef_kilo_${SessionManager.userId}", 0f)
+        set(value) = prefs.edit().putFloat("hedef_kilo_${SessionManager.userId}", value).apply()
 
     fun getMealCalorie(mealId: String): Float = prefs.getFloat("meal_${SessionManager.userId}_$mealId", 0f)
     fun saveMealCalorie(mealId: String, calories: Float) = prefs.edit().putFloat("meal_${SessionManager.userId}_$mealId", calories).apply()

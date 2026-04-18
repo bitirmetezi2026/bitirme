@@ -108,7 +108,10 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         yas=user.yas,
         cinsiyet=user.cinsiyet,
         language=user.language,
-        activity_level=user.activity_level
+        activity_level=user.activity_level,
+        hedef=user.hedef,
+        hedef_hiz=user.hedef_hiz,
+        hedef_kilo=user.hedef_kilo
     )
     db.add(new_user)
     db.commit()

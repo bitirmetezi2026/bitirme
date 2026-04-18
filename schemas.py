@@ -16,6 +16,9 @@ class UserCreate(BaseModel):
     cinsiyet: Optional[str] = "Belirtilmemiş"
     language: Optional[str] = "English"
     activity_level: Optional[str] = "Hareketsiz"
+    hedef: Optional[str] = "Korumak"
+    hedef_hiz: Optional[str] = None
+    hedef_kilo: Optional[float] = None
 
 class LoginItem(BaseModel):
     email: str
@@ -31,6 +34,9 @@ class UserResponse(BaseModel):
     cinsiyet: Optional[str] = None
     language: Optional[str] = None
     activity_level: Optional[str] = None
+    hedef: Optional[str] = None
+    hedef_hiz: Optional[str] = None
+    hedef_kilo: Optional[float] = None
 
     class Config:
         orm_mode = True
@@ -46,6 +52,9 @@ class UserUpdate(BaseModel):
     cinsiyet: Optional[str] = None
     language: Optional[str] = None
     activity_level: Optional[str] = None
+    hedef: Optional[str] = None
+    hedef_hiz: Optional[str] = None
+    hedef_kilo: Optional[float] = None
 
 # ========================
 # YEMEK ŞEMALARI
