@@ -256,11 +256,13 @@ def chat_with_ai(
     if not ogunler_str:
         ogunler_str = "Bugün henüz öğün girilmemiş."
 
-    # Kullanıcı bilgilerini al (Android'den gelen veya veritabanından)
-    boy = chat_request.boy_cm or getattr(current_user, 'boy_cm', 170.0) or 170.0
-    kilo = chat_request.kilo_kg or getattr(current_user, 'kilo_kg', 70.0) or 70.0
-    yas = chat_request.yas or getattr(current_user, 'yas', 30) or 30
-    cinsiyet = chat_request.cinsiyet or getattr(current_user, 'cinsiyet', "Belirtilmemiş") or "Belirtilmemiş"
+    # Kullanıcı bilgilerini al (Android'in default Kadın göndermesini ezip veritabanını önceliklendir)
+    boy = getattr(current_user, 'boy_cm', None) or chat_request.boy_cm or 170.0
+    kilo = getattr(current_user, 'kilo_kg', None) or chat_request.kilo_kg or 70.0
+    yas = getattr(current_user, 'yas', None) or chat_request.yas or 30
+    
+    db_cinsiyet = getattr(current_user, 'cinsiyet', None)
+    cinsiyet = db_cinsiyet if db_cinsiyet and db_cinsiyet != "Belirtilmemiş" else (chat_request.cinsiyet or "Belirtilmemiş")
 
     print(f"🤖 Chat İsteği -> Kullanıcı: {current_user.email} | Boy: {boy} | Kilo: {kilo} | Mesaj: {message[:50]}...")
 
@@ -308,8 +310,7 @@ MEHMET_AI_URL = os.getenv("MEHMET_AI_URL", "http://192.168.1.11:8000/analyze")
 
 @app.post("/analyze")
 async def analyze_food(
-    file: UploadFile = File(...),
-    current_user: models.User = Depends(get_current_user)
+    file: UploadFile = File(...)
 ):
     """Fotoğraftan yemek tanıma - Mehmet'in yapay zeka servisine proxy."""
     image_data = await file.read()
