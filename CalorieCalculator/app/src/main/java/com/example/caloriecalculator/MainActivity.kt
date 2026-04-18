@@ -742,7 +742,7 @@ fun HomeScreen() {
                         Text("${displayCalories.toInt()}", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen)
                         Text(" " + stringResource(R.string.kcal_unit), fontSize = 16.sp, color = TextGray, modifier = Modifier.padding(bottom = 4.dp))
                         Spacer(modifier = Modifier.weight(1f))
-                        Text(stringResource(R.string.target_label, "1920"), fontSize = 14.sp, color = TextGray)
+                        Text(stringResource(R.string.target_label, PersistenceManager.getTargetCalories().toInt().toString()), fontSize = 14.sp, color = TextGray)
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                     
@@ -759,7 +759,7 @@ fun HomeScreen() {
             }
         }
         item { Spacer(modifier = Modifier.height(24.dp)) }
-        item { Row(Modifier.fillMaxWidth()) { InfoCard(title = "Daily Calorie", value = "1,250 kcal", modifier = Modifier.weight(1f)); Spacer(modifier = Modifier.width(16.dp)); InteractiveWaterCard(modifier = Modifier.weight(1f)) } }
+        item { Row(Modifier.fillMaxWidth()) { InfoCard(title = "Daily Calorie", value = "${PersistenceManager.getTargetCalories().toInt()} kcal", modifier = Modifier.weight(1f)); Spacer(modifier = Modifier.width(16.dp)); InteractiveWaterCard(modifier = Modifier.weight(1f)) } }
         item { Spacer(modifier = Modifier.height(24.dp)) }
     }
 }

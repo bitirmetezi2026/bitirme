@@ -207,6 +207,53 @@ object PersistenceManager {
         get() = prefs.getFloat("hedef_kilo_${SessionManager.userId}", 0f)
         set(value) = prefs.edit().putFloat("hedef_kilo_${SessionManager.userId}", value).apply()
 
+    fun getTargetCalories(): Float {
+        // 1. BMR Hesapla (Mifflin-St Jeor)
+        var bmr = 10f * kiloKg + 6.25f * boyCm - 5f * yas
+        if (cinsiyet.equals("Erkek", ignoreCase = true)) {
+            bmr += 5f
+        } else {
+            bmr -= 161f
+        }
+
+        // 2. Günlük Yakımı Bul (TDEE)
+        val activityMultiplier = when (activityLevel) {
+            "Hareketsiz" -> 1.2f
+            "Az Aktif" -> 1.375f
+            "Orta Aktif" -> 1.55f
+            "Çok Aktif" -> 1.725f
+            else -> 1.2f
+        }
+        val tdee = bmr * activityMultiplier
+
+        // 3. Hedefe Göre Kalori
+        var targetCal = tdee
+        if (hedef == "Kilo Vermek") {
+            val deficit = when {
+                hedefHiz.contains("0.25") -> 275f
+                hedefHiz.contains("0.5") -> 550f
+                hedefHiz.contains("1.0") -> 1100f
+                else -> 550f
+            }
+            targetCal -= deficit
+        } else if (hedef == "Kilo Almak") {
+            val surplus = when {
+                hedefHiz.contains("Kas Odaklı") -> 250f
+                hedefHiz.contains("Hızlı") -> 700f
+                else -> 400f
+            }
+            targetCal += surplus
+        }
+
+        // 4. Güvenlik Sınırı
+        val minCal = if (cinsiyet.equals("Erkek", ignoreCase = true)) 1500f else 1200f
+        if (targetCal < minCal) {
+            targetCal = minCal
+        }
+
+        return targetCal
+    }
+
     fun getMealCalorie(mealId: String): Float = prefs.getFloat("meal_${SessionManager.userId}_$mealId", 0f)
     fun saveMealCalorie(mealId: String, calories: Float) = prefs.edit().putFloat("meal_${SessionManager.userId}_$mealId", calories).apply()
 
