@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.CalorieCalculator" parent="Theme.AppCompat.Light.NoActionBar" />
+    <!-- themes.xml dosyasının içine, </resources> etiketinden önce ekle -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Arka plan rengini bizim yumuşak beyazımız yap -->
+        <item name="windowSplashScreenBackground">@color/soft_white_for_xml</item>
+
+        <!-- Ortada görünecek olan ikonu bizim logomuz yap -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/app_logo</item>
+
+        <!-- Başlangıç ekranı bittikten sonra hangi temaya geçileceğini belirt -->
+        <item name="postSplashScreenTheme">@style/Theme.CalorieCalculator</item>
+    </style>
+</resources>

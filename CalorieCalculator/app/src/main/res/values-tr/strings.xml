@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kalori Hesaplayıcı</string>
+    <string name="settings_title">Ayarlar</string>
+    <string name="account_section">Hesap</string>
+    <string name="edit_profile">Profili Düzenle</string>
+    <string name="change_email">E-posta Değiştir</string>
+    <string name="personalization_section">Kişiselleştirme</string>
+    <string name="height_weight">Boy &amp; Kilo</string>
+    <string name="general_section">Genel</string>
+    <string name="language">Dil</string>
+    <string name="logout">Çıkış Yap</string>
+
+    <string name="full_name_label">Ad Soyad</string>
+    <string name="save_button">Kaydet</string>
+    <string name="age_label">Yaş</string>
+    <string name="gender_label">Cinsiyet</string>
+    <string name="male">Erkek</string>
+    <string name="female">Kadın</string>
+    <string name="other_gender">Belirtilmemiş</string>
+    <string name="height_label">Boy (cm)</string>
+    <string name="weight_label">Kilo (kg)</string>
+    
+    <string name="current_language">Türkçe</string>
+    <string name="select_language">Dil Seçin</string>
+    <string name="turkish">Türkçe</string>
+    <string name="english">İngilizce</string>
+
+    <string name="new_email_label">Yeni E-posta</string>
+    
+    <string name="error_message">Bir hata oluştu.</string>
+    
+    <string name="nav_home">Ana Sayfa</string>
+    <string name="nav_chatbot">Bot</string>
+    <string name="nav_calculate">Hesapla</string>
+    <string name="nav_statistic">Ne Yesem?</string>
+    <string name="nav_settings">Ayarlar</string>
+
+    <string name="calculate_title">Kalori Hesapla</string>
+    <string name="camera_button">Kamera</string>
+    <string name="gallery_button">Galeri</string>
+    <string name="calculate_action_button">HESAPLA</string>
+    <string name="food_label">Yemek: </string>
+    <string name="calories_label">Kalori: </string>
+    <string name="meal_breakfast">Kahvaltı</string>
+    <string name="meal_lunch">Öğle</string>
+    <string name="meal_dinner">Akşam</string>
+    <string name="meal_snack">Ara Öğün</string>
+    <string name="ask_which_meal">Hangi öğüne eklensin?</string>
+    <string name="add_button_meal">EKLE</string>
+    <string name="todays_meals">Günün Öğünleri</string>
+    <string name="chatbot_welcome_1">Merhaba! Bugün size nasıl yardımcı olabilirim?</string>
+    <string name="chatbot_welcome_2">Geçmiş öğünleriniz veya genel beslenme sorularınız hakkında bana danışabilirsiniz.</string>
+    <string name="chatbot_error">Bota ulaşılamadı. (Hata: %1$s)</string>
+    <string name="chatbot_hint">Bir şey sor...</string>
+
+    <string name="signin_title">GİRİŞ YAP</string>
+    <string name="signup_title">KAYIT OL</string>
+    <string name="email_hint">E-posta Adresi</string>
+    <string name="password_hint">Şifre</string>
+    <string name="full_name_hint">Ad Soyad</string>
+    <string name="no_account">Hesabınız yok mu? </string>
+    <string name="have_account">Zaten hesabınız var mı? </string>
+
+    <!-- New Strings for Manual Entry and Charts (Turkish) -->
+    <string name="manual_add_title">Kalori Ekle</string>
+    <string name="manual_add_label">Kalori Miktarı (kcal)</string>
+    <string name="manual_suffix">(Manuel)</string>
+    <string name="kcal_unit">kcal</string>
+    <string name="today_calories_title">Bugünün Kalorisi</string>
+    <string name="day_calories_suffix"> Kalorisi</string>
+    <string name="cancel">İptal</string>
+    <string name="day_mon">Pzt</string>
+    <string name="day_tue">Sal</string>
+    <string name="day_wed">Çar</string>
+    <string name="day_thu">Per</string>
+    <string name="day_fri">Cum</string>
+    <string name="day_sat">Cmt</string>
+    <string name="day_sun">Paz</string>
+    <string name="target_label">Hedef: %1$s kcal</string>
+    <string name="stat_exercise">Egzersiz</string>
+    <string name="stat_bpm">Nabız</string>
+    <string name="stat_weight">Kilo</string>
+    <string name="stat_water">Su</string>
+    <string name="ingredients_label">Malzemeler</string>
+    <string name="steps_label">Hazırlanışı</string>
+    <string name="get_recipe_button">Tarif Önerisi Al</string>
+    <string name="detected_ingredients_title">Tespit Edilen Malzemeler:</string>
+</resources>
