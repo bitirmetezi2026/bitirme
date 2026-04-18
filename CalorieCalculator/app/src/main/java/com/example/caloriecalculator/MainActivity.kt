@@ -80,6 +80,7 @@ sealed class Screen(val route: String) {
     data object Login : Screen("login")
     data object Register : Screen("register")
     data object ProfileSetup : Screen("profile_setup")
+    data object ActivityLevel : Screen("activity_level")
     data object Home : Screen("home")
     data object Chatbot : Screen("chatbot")
     data object Calculate : Screen("calculate")
@@ -104,7 +105,8 @@ fun NavGraphBuilder.authGraph(navController: NavController) {
         composable(Screen.Welcome.route) { WelcomeScreen(navController) }
         composable(Screen.Login.route) { LoginScreen(navController = navController, onLoginSuccess = { navController.navigate("main_graph") { popUpTo("auth_graph") { inclusive = true } } }) }
         composable(Screen.Register.route) { RegisterScreen(navController) }
-        composable(Screen.ProfileSetup.route) { ProfileSetupScreen(navController = navController, onSetupComplete = { navController.navigate("main_graph") { popUpTo("auth_graph") { inclusive = true } } }) }
+        composable(Screen.ProfileSetup.route) { ProfileSetupScreen(navController = navController) }
+        composable(Screen.ActivityLevel.route) { ActivityLevelScreen(navController = navController, onSetupComplete = { navController.navigate("main_graph") { popUpTo("auth_graph") { inclusive = true } } }) }
     }
 }
 
@@ -926,15 +928,11 @@ fun RegisterScreen(navController: NavController) {
 }
 
 @Composable
-fun ProfileSetupScreen(navController: NavController, onSetupComplete: () -> Unit) {
+fun ProfileSetupScreen(navController: NavController) {
     var boyInput by remember { mutableStateOf("") }
     var kiloInput by remember { mutableStateOf("") }
     var yasInput by remember { mutableStateOf("") }
     var cinsiyetInput by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     Box(modifier = Modifier.fillMaxSize()) {
         AuthBackground()
@@ -962,11 +960,79 @@ fun ProfileSetupScreen(navController: NavController, onSetupComplete: () -> Unit
                     Text("Kadın", modifier = Modifier.clickable { cinsiyetInput = "Kadın" })
                 }
             }
+            Spacer(modifier = Modifier.height(40.dp))
+            
+            Button(
+                onClick = {
+                    if (boyInput.isNotBlank() && kiloInput.isNotBlank() && yasInput.isNotBlank() && cinsiyetInput.isNotBlank()) {
+                        SessionManager.tempBoy = boyInput.toFloatOrNull() ?: 170.0f
+                        SessionManager.tempKilo = kiloInput.toFloatOrNull() ?: 70.0f
+                        SessionManager.tempYas = yasInput.toIntOrNull() ?: 30
+                        SessionManager.tempCinsiyet = cinsiyetInput
+                        navController.navigate(Screen.ActivityLevel.route)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+            ) {
+                Text("İleri", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+fun ActivityLevelScreen(navController: NavController, onSetupComplete: () -> Unit) {
+    var selectedLevel by remember { mutableStateOf("Hareketsiz") }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val activities = listOf(
+        Pair("Hareketsiz", "Günümün çoğu oturarak geçiyor\nSpor yapmıyorum\n0–5.000 adım"),
+        Pair("Az Aktif", "Hafif hareketli geçiyor\nHaftada 1-2 gün hafif egzersiz\n5.000–8.000 adım"),
+        Pair("Orta Aktif", "Hareketli bir yaşantım var\nHaftada 3-4 gün spor yapıyorum\n8.000–12.000 adım"),
+        Pair("Çok Aktif", "Sürekli hareket halindeyim\nHer gün ağır idman yapıyorum\n12.000+ adım")
+    )
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AuthBackground()
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(modifier = Modifier.height(80.dp))
+            Text("Ne Kadar Hareketlisin?", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("Sana uygun kalori hedefini belirlememiz için hareket seviyeni seç.", fontSize = 14.sp, color = TextGray, textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(30.dp))
+
+            activities.forEach { (level, desc) ->
+                val isSelected = selectedLevel == level
+                Card(
+                    modifier = Modifier.fillMaxWidth().height(90.dp).clickable { selectedLevel = level },
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, if (isSelected) PrimaryGreen else Color.Transparent),
+                    colors = CardDefaults.cardColors(containerColor = if (isSelected) LightGreenBg else Color.White),
+                    elevation = CardDefaults.cardElevation(if (isSelected) 4.dp else 1.dp)
+                ) {
+                    Row(modifier = Modifier.fillMaxSize().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = isSelected, onClick = { selectedLevel = level }, colors = RadioButtonDefaults.colors(selectedColor = PrimaryGreen))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(level, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = if (isSelected) PrimaryGreen else Color.Black)
+                            Text(desc, fontSize = 12.sp, color = TextGray, lineHeight = 16.sp)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
             if (errorMessage != null) {
                 Text(errorMessage!!, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
-            Spacer(modifier = Modifier.height(40.dp))
-            
+            Spacer(modifier = Modifier.height(20.dp))
+
             Button(
                 onClick = {
                     isLoading = true
@@ -976,26 +1042,25 @@ fun ProfileSetupScreen(navController: NavController, onSetupComplete: () -> Unit
                                 email = SessionManager.tempEmail,
                                 password = SessionManager.tempPassword,
                                 full_name = SessionManager.tempName.ifBlank { null },
-                                boy_cm = boyInput.toFloatOrNull(),
-                                kilo_kg = kiloInput.toFloatOrNull(),
-                                yas = yasInput.toIntOrNull(),
-                                cinsiyet = cinsiyetInput.ifBlank { "Belirtilmemiş" }
+                                boy_cm = SessionManager.tempBoy,
+                                kilo_kg = SessionManager.tempKilo,
+                                yas = SessionManager.tempYas,
+                                cinsiyet = SessionManager.tempCinsiyet.ifBlank { "Belirtilmemiş" },
+                                activity_level = selectedLevel
                             )
-                            // 1. Kayıt Ol
                             RetrofitClient.instance.registerUser(userPayload)
                             
-                            // 2. Giriş Yap (Token al)
                             val loginResponse = RetrofitClient.instance.loginUser(LoginItem(SessionManager.tempEmail, SessionManager.tempPassword))
                             SessionManager.token = "Bearer ${loginResponse.access_token}"
                             SessionManager.userId = loginResponse.user_id
                             SessionManager.userName = loginResponse.full_name ?: SessionManager.tempName
 
-                            // 3. Lokal verileri de cihaz hafızasına kaydet (PersistenceManager)
                             PersistenceManager.init(context)
-                            PersistenceManager.boyCm = boyInput.toFloatOrNull() ?: 170.0f
-                            PersistenceManager.kiloKg = kiloInput.toFloatOrNull() ?: 70.0f
-                            PersistenceManager.yas = yasInput.toIntOrNull() ?: 30
-                            PersistenceManager.cinsiyet = cinsiyetInput.ifBlank { "Belirtilmemiş" }
+                            PersistenceManager.boyCm = SessionManager.tempBoy
+                            PersistenceManager.kiloKg = SessionManager.tempKilo
+                            PersistenceManager.yas = SessionManager.tempYas
+                            PersistenceManager.cinsiyet = SessionManager.tempCinsiyet.ifBlank { "Belirtilmemiş" }
+                            PersistenceManager.activityLevel = selectedLevel
 
                             onSetupComplete()
                         } catch (e: Exception) {
@@ -1011,7 +1076,7 @@ fun ProfileSetupScreen(navController: NavController, onSetupComplete: () -> Unit
                 enabled = !isLoading
             ) {
                 if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                else Text("Başla!", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                else Text("Tamamla ve Başla!", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(40.dp))
         }

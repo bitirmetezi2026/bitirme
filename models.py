@@ -18,6 +18,7 @@ class User(Base):
     yas = Column(Integer, nullable=True, default=30)
     cinsiyet = Column(String, nullable=True)  # "Erkek", "Kadın" veya "Belirtilmemiş"
     language = Column(String, nullable=True, default="English")
+    activity_level = Column(String, nullable=True, default="Hareketsiz")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

@@ -16,7 +16,8 @@ data class UserCreate(
     val boy_cm: Float? = null,
     val kilo_kg: Float? = null,
     val yas: Int? = null,
-    val cinsiyet: String? = null
+    val cinsiyet: String? = null,
+    val activity_level: String? = null
 )
 data class LoginItem(val email: String, val password: String)
 data class UserResponse(val id: Int, val email: String, val full_name: String?)
@@ -151,6 +152,10 @@ object SessionManager {
     var tempEmail: String = ""
     var tempPassword: String = ""
     var tempName: String = ""
+    var tempBoy: Float = 170.0f
+    var tempKilo: Float = 70.0f
+    var tempYas: Int = 30
+    var tempCinsiyet: String = ""
 }
 
 object PersistenceManager {
@@ -181,6 +186,10 @@ object PersistenceManager {
     var cinsiyet: String
         get() = prefs.getString("cinsiyet_${SessionManager.userId}", "Kadın") ?: "Kadın"
         set(value) = prefs.edit().putString("cinsiyet_${SessionManager.userId}", value).apply()
+
+    var activityLevel: String
+        get() = prefs.getString("activity_level_${SessionManager.userId}", "Hareketsiz") ?: "Hareketsiz"
+        set(value) = prefs.edit().putString("activity_level_${SessionManager.userId}", value).apply()
 
     fun getMealCalorie(mealId: String): Float = prefs.getFloat("meal_${SessionManager.userId}_$mealId", 0f)
     fun saveMealCalorie(mealId: String, calories: Float) = prefs.edit().putFloat("meal_${SessionManager.userId}_$mealId", calories).apply()

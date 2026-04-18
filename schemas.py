@@ -15,6 +15,7 @@ class UserCreate(BaseModel):
     yas: Optional[int] = 30
     cinsiyet: Optional[str] = "Belirtilmemiş"
     language: Optional[str] = "English"
+    activity_level: Optional[str] = "Hareketsiz"
 
 class LoginItem(BaseModel):
     email: str
@@ -29,6 +30,7 @@ class UserResponse(BaseModel):
     yas: Optional[int] = None
     cinsiyet: Optional[str] = None
     language: Optional[str] = None
+    activity_level: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -43,6 +45,7 @@ class UserUpdate(BaseModel):
     yas: Optional[int] = None
     cinsiyet: Optional[str] = None
     language: Optional[str] = None
+    activity_level: Optional[str] = None
 
 # ========================
 # YEMEK ŞEMALARI
