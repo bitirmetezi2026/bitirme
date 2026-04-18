@@ -934,6 +934,7 @@ fun ProfileSetupScreen(navController: NavController, onSetupComplete: () -> Unit
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     Box(modifier = Modifier.fillMaxSize()) {
         AuthBackground()
@@ -990,6 +991,7 @@ fun ProfileSetupScreen(navController: NavController, onSetupComplete: () -> Unit
                             SessionManager.userName = loginResponse.full_name ?: SessionManager.tempName
 
                             // 3. Lokal verileri de cihaz hafızasına kaydet (PersistenceManager)
+                            PersistenceManager.init(context)
                             PersistenceManager.boyCm = boyInput.toFloatOrNull() ?: 170.0f
                             PersistenceManager.kiloKg = kiloInput.toFloatOrNull() ?: 70.0f
                             PersistenceManager.yas = yasInput.toIntOrNull() ?: 30
