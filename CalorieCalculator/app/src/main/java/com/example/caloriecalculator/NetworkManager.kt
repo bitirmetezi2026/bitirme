@@ -186,7 +186,7 @@ object PersistenceManager {
 }
 
 object RetrofitClient {
-    private const val BASE_URL = "https://dietrag.onrender.com/"
+    private const val BASE_URL = "https://bitirme-g5gn.onrender.com/"
 
     private val client = okhttp3.OkHttpClient.Builder()
         .connectTimeout(90, java.util.concurrent.TimeUnit.SECONDS)
