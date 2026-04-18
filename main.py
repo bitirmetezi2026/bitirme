@@ -13,6 +13,7 @@ from datetime import datetime
 import httpx
 import base64
 from ai_graph import app as vision_app
+from Ne_Yesem.agent import process_fridge_image
 
 import utils
 import models
@@ -358,22 +359,24 @@ async def analyze_food(file: UploadFile = File(...)):
 
 @app.post("/recommend-recipes")
 async def forward_to_ai_agent(file: UploadFile = File(...)):
-    """API güncellenene kadar geçici yanıt"""
-    return {
-        "status": "success",
-        "detected_ingredients": ["Tarif modülü bakımda"],
-        "recommendations": {
-            "recipes": [
-                {
-                    "name": "Şu an bakımdayız",
-                    "description": "Tarif önerme zekası sisteme entegre ediliyor.",
-                    "ingredients": ["Yok"],
-                    "steps": ["Lütfen daha sonra tekrar deneyin."],
-                    "calories": "0"
-                }
-            ]
+    """Buzdolabı fotoğrafından tarif önerisi (Ne Yesem)"""
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Sadece resim formatında dosya yükleyebilirsiniz.")
+    
+    try:
+        contents = await file.read()
+        
+        # Süreci LangGraph ajanına gönderiyoruz
+        result_state = process_fridge_image(contents)
+        
+        return {
+            "status": "success",
+            "detected_ingredients": result_state.get("ingredients", []),
+            "recommendations": result_state.get("recipes", {})
         }
-    }
+    except Exception as e:
+        print(f"Error processing fridge image: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # =============================================
 # SUNUCU BAŞLATMA
