@@ -1138,6 +1138,20 @@ fun GoalSetupScreen(navController: NavController, onSetupComplete: () -> Unit) {
 
             Button(
                 onClick = {
+                    val floatTarget = targetWeight.toFloatOrNull() ?: 0f
+                    if (selectedGoal == "Kilo Vermek" && floatTarget >= SessionManager.tempKilo) {
+                        errorMessage = "Hata: Kilo vermek için hedef kilonuz mevcut kilonuzdan (${SessionManager.tempKilo}) küçük olmalıdır."
+                        return@Button
+                    }
+                    if (selectedGoal == "Kilo Almak" && floatTarget <= SessionManager.tempKilo) {
+                        errorMessage = "Hata: Kilo almak için hedef kilonuz mevcut kilonuzdan (${SessionManager.tempKilo}) büyük olmalıdır."
+                        return@Button
+                    }
+                    if (selectedGoal != "Korumak" && floatTarget <= 0f) {
+                        errorMessage = "Hata: Lütfen geçerli bir hedef kilo giriniz."
+                        return@Button
+                    }
+
                     val finalSpeed = if (selectedGoal == "Kilo Vermek") {
                         when (loseSpeedIndex) {
                             0f -> "0.25 (Yavaş)"
