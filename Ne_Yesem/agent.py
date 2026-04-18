@@ -95,7 +95,8 @@ Lütfen sadece bu malzemeleri ağırlıklı kullanarak (yağ, tuz, baharat gibi 
     response = structured_llm.invoke(messages)
     
     # Return as dict for the state
-    return {"recipes": response.model_dump()}
+    recipes_dict = response.model_dump() if hasattr(response, "model_dump") else response.dict()
+    return {"recipes": recipes_dict}
 
 # Build the LangGraph
 workflow = StateGraph(AgentState)
