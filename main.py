@@ -128,21 +128,10 @@ def login(user_credentials: schemas.LoginItem, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
 
     if not user:
-        # Test amaçlı: Kullanıcı yoksa otomatik oluştur
-        hashed_pwd = utils.hash_password(user_credentials.password)
-        new_user = models.User(
-            email=user_credentials.email,
-            password_hash=hashed_pwd,
-            full_name="Otomatik Test Kullanıcısı"
-        )
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-        user = new_user
+        raise HTTPException(status_code=403, detail="Kullanıcı bulunamadı veya şifre hatalı!")
 
-    # Not: Şifre kontrolü test için devre dışı. Yayına almadan önce açın!
-    # if not utils.verify_password(user_credentials.password, user.password_hash):
-    #     raise HTTPException(status_code=403, detail="Şifre hatalı!")
+    if not utils.verify_password(user_credentials.password, user.password_hash):
+        raise HTTPException(status_code=403, detail="Kullanıcı bulunamadı veya şifre hatalı!")
 
     access_token = utils.create_access_token(
         data={"sub": user.email, "id": user.id}

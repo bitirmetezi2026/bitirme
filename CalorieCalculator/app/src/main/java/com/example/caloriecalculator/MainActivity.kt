@@ -889,7 +889,14 @@ fun LoginScreen(navController: NavController, onLoginSuccess: () -> Unit) {
                         }
                         onLoginSuccess() 
                     }
-                    catch (e: Exception) { errorMessage = "Hata: ${e.localizedMessage}" }
+                    catch (e: retrofit2.HttpException) {
+                        if (e.code() == 403 || e.code() == 401) {
+                            errorMessage = "E-posta veya şifre hatalı!"
+                        } else {
+                            errorMessage = "Sunucu Hatası (${e.code()})"
+                        }
+                    }
+                    catch (e: Exception) { errorMessage = "Hata: Sunucuya bağlanılamadı. ${e.localizedMessage}" }
                     finally { isLoading = false }
                 }
             },
