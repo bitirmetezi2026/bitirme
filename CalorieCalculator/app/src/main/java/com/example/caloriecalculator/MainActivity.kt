@@ -100,9 +100,9 @@ sealed class Screen(val route: String) {
 
 // --- ANA NAVİGASYON ---
 @Composable
-fun AppNavigation() {
+fun AppNavigation(startDest: String = "auth_graph") {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = "auth_graph") {
+    NavHost(navController = navController, startDestination = startDest) {
         authGraph(navController)
         mainGraph(navController)
     }
@@ -220,6 +220,7 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
         item { SettingsSection(title = stringResource(R.string.general_section)) }
         item { SettingsItem(title = stringResource(R.string.language), subtitle = stringResource(R.string.current_language), icon = Icons.Filled.Language, onClick = { showLanguageDialog = true }) }
         item { Spacer(modifier = Modifier.height(40.dp)) }
+        item {
             OutlinedButton(
                 onClick = { 
                     SessionManager.token = null
@@ -235,7 +236,8 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedButton(
                 onClick = { 
-                    (context as? android.app.Activity)?.finishAffinity()
+                    (context as? android.app.Activity)?.finishAndRemoveTask()
+                    kotlin.system.exitProcess(0)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -279,7 +281,7 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
                             }
                             showNameDialog = false 
                         } catch(e:Exception){ 
-                            Toast.makeText(context, context.getString(R.string.error_message) + ": " + e.localizedMessage, Toast.LENGTH_SHORT).show() 
+                            Toast.makeText(context, "${context.getString(R.string.error_message)}: ${e.localizedMessage}", Toast.LENGTH_SHORT).show() 
                         } 
                     }
                 } else {
@@ -304,7 +306,7 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
                             RetrofitClient.instance.updateUserInfo(token, UserUpdate(boy_cm = heightInput.toFloatOrNull(), kilo_kg = weightInput.toFloatOrNull()))
                             showPersonalDialog = false 
                         } catch(e:Exception){ 
-                            Toast.makeText(context, context.getString(R.string.error_message) + ": " + e.localizedMessage, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "${context.getString(R.string.error_message)}: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
                         } 
                     }
                 } else {
@@ -325,7 +327,7 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
                             RetrofitClient.instance.updateUserInfo(token, UserUpdate(email = emailInput))
                             showEmailDialog = false 
                         } catch(e:Exception){ 
-                            Toast.makeText(context, context.getString(R.string.error_message) + ": " + e.localizedMessage, Toast.LENGTH_SHORT).show() 
+                            Toast.makeText(context, "${context.getString(R.string.error_message)}: ${e.localizedMessage}", Toast.LENGTH_SHORT).show() 
                         } 
                     }
                 } else {
