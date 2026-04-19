@@ -83,7 +83,7 @@ def recipe_generator_node(state: AgentState):
         diet_info += f"\nKullanıcının diyet kısıtlamaları ve rahatsızlıkları: {state['kisitlamalar']}. DİKKAT: Gösterilen veya listelenen malzemeler arasında bu yasaklı listeye girenler varsa ASLA tarifine dahil etme (örneğin laktoz intoleransı varsa asla sütlü/peynirli bir tarif önerme)."
     
     if state.get("kalan_kalori") and state.get("kalan_kalori") != "0":
-        diet_info += f"\nDİKKAT! Kullanıcının bugünkü KALAN KALORİ HAKKI: {state['kalan_kalori']} kcal. Lütfen önereceğin yemek tarifinin porsiyon kalorisi bu kalori miktarına olabildiğince uygun olsun. Eğer fotoğraftaki malzemeler bu enerjiye yetmiyorsa ve çok düşük kalorili kalıyorsa, tarifin yanına ek olarak sağlıklı atıştırmalıklar (örneğin X adet kaloriye denk gelecek ceviz, badem, yoğurt vb.) önererek kaloriyi kullanıcının kalan hedefine yaklaştır."
+        diet_info += f"\nDİKKAT! Kullanıcının bugünkü KALAN KALORİ HAKKI: {state['kalan_kalori']} kcal. Lütfen önereceğin yemek tarifinin toplam kalorisi (hesaplanan gramaja göre) bu kalori miktarına olabildiğince uygun olsun. Eğer fotoğraftaki malzemeler bu enerjiye yetmiyorsa ve çok düşük kalorili kalıyorsa, tarifin yanına ek olarak sağlıklı atıştırmalıklar (örneğin X adet kaloriye denk gelecek ceviz, badem, yoğurt vb.) önererek kaloriyi kullanıcının kalan hedefine yaklaştır."
 
     system_prompt = f"""
 Sen usta bir şef ve uzman bir diyetisyensin. Kullanıcının elindeki malzemelerle yapabileceği 2 veya 3 tane sağlıklı, dengeli ve lezzetli yemek tarifi önermeni istiyorum.
