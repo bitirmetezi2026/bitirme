@@ -7,7 +7,7 @@ class Macros(BaseModel):
 
 class FoodAnalysis(BaseModel):
     food_name: str = Field(description="Yemegin tahmini adi ve genel tanimi")
-    portion: str = Field(description="Porsiyon bilgisi (orn: 1 tabak, 2 dilim, 150 gram vb.)")
+    portion: str = Field(description="SADECE tahmini gramaj bilgisi (orn: 150 gram, 250 gram vb.) ASLA 'porsiyon', 'tabak', 'dilim' gibi kelimeler KULLANMA!")
     calories: float = Field(description="Tahmini toplam kalori degeri")
     macros: Macros = Field(description="Besin ögesi makro degerleri")
 
