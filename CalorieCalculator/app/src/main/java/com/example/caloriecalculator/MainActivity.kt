@@ -65,7 +65,15 @@ class MainActivity : AppCompatActivity() {
         setContent {
             CalorieCalculatorTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AppNavigation()
+                    PersistenceManager.init(applicationContext)
+
+                    // Restore session from persistent storage
+                    SessionManager.token = PersistenceManager.savedToken
+                    SessionManager.userId = PersistenceManager.savedUserId
+                    SessionManager.userName = PersistenceManager.savedUserName
+
+                    val startDest = if (SessionManager.token != null) "main_graph" else "auth_graph"
+                    AppNavigation(startDest)
                 }
             }
         }
@@ -96,7 +104,7 @@ fun AppNavigation() {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = "auth_graph") {
         authGraph(navController)
-        mainGraph()
+        mainGraph(navController)
     }
 }
 
@@ -114,15 +122,19 @@ fun NavGraphBuilder.authGraph(navController: NavController) {
     }
 }
 
-fun NavGraphBuilder.mainGraph() {
+fun NavGraphBuilder.mainGraph(rootNavController: NavController) {
     composable("main_graph") {
-        MainScaffold()
+        MainScaffold(onLogout = { 
+            rootNavController.navigate("auth_graph") { 
+                popUpTo("main_graph") { inclusive = true } 
+            } 
+        })
     }
 }
 
 // --- ANA EKRAN YAPISI ---
 @Composable
-fun MainScaffold() {
+fun MainScaffold(onLogout: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     PersistenceManager.init(context)
     
@@ -159,7 +171,7 @@ fun MainScaffold() {
             composable(Screen.Chatbot.route) { ChatbotScreen() }
             composable(Screen.Calculate.route) { CalculateScreen() }
             composable(Screen.Statistic.route) { StatisticScreen() }
-            composable(Screen.Settings.route) { SettingsScreen(navController) }
+            composable(Screen.Settings.route) { SettingsScreen(navController, onLogout) }
         }
     }
 }
@@ -180,7 +192,7 @@ fun AppBottomBar(navController: NavController) {
 
 // --- 1. SETTINGS SCREEN ---
 @Composable
-fun SettingsScreen(navController: NavController) {
+fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -208,17 +220,28 @@ fun SettingsScreen(navController: NavController) {
         item { SettingsSection(title = stringResource(R.string.general_section)) }
         item { SettingsItem(title = stringResource(R.string.language), subtitle = stringResource(R.string.current_language), icon = Icons.Filled.Language, onClick = { showLanguageDialog = true }) }
         item { Spacer(modifier = Modifier.height(40.dp)) }
-        item {
             OutlinedButton(
                 onClick = { 
                     SessionManager.token = null
-                    navController.navigate(Screen.Welcome.route) { popUpTo(0) } 
+                    PersistenceManager.savedToken = null
+                    onLogout()
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.5f))
             ) {
                 Text(stringResource(R.string.logout), color = Color.Red, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(
+                onClick = { 
+                    (context as? android.app.Activity)?.finishAffinity()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color.DarkGray)
+            ) {
+                Text("Uygulamayı Kapat", color = Color.DarkGray, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -884,8 +907,13 @@ fun LoginScreen(navController: NavController, onLoginSuccess: () -> Unit) {
                         val response = RetrofitClient.instance.loginUser(LoginItem(email, password))
                         SessionManager.token = "Bearer ${response.access_token}"
                         SessionManager.userId = response.user_id
+                        
+                        PersistenceManager.savedToken = SessionManager.token
+                        PersistenceManager.savedUserId = SessionManager.userId
+                        
                         if (!response.full_name.isNullOrBlank()) {
                             SessionManager.userName = response.full_name
+                            PersistenceManager.savedUserName = SessionManager.userName
                         }
                         onLoginSuccess() 
                     }
@@ -1281,6 +1309,10 @@ fun DietarySetupScreen(navController: NavController, onSetupComplete: () -> Unit
                             SessionManager.userName = loginResponse.full_name ?: SessionManager.tempName
 
                             PersistenceManager.init(context)
+                            PersistenceManager.savedToken = SessionManager.token
+                            PersistenceManager.savedUserId = SessionManager.userId
+                            PersistenceManager.savedUserName = SessionManager.userName
+                            
                             PersistenceManager.boyCm = SessionManager.tempBoy
                             PersistenceManager.kiloKg = SessionManager.tempKilo
                             PersistenceManager.yas = SessionManager.tempYas

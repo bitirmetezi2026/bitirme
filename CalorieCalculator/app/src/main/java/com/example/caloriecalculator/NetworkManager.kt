@@ -179,6 +179,18 @@ object PersistenceManager {
         }
     }
 
+    var savedToken: String?
+        get() = prefs.getString("saved_token", null)
+        set(value) = prefs.edit().putString("saved_token", value).apply()
+
+    var savedUserId: Int
+        get() = prefs.getInt("saved_user_id", 0)
+        set(value) = prefs.edit().putInt("saved_user_id", value).apply()
+
+    var savedUserName: String
+        get() = prefs.getString("saved_user_name", "Kullanıcı") ?: "Kullanıcı"
+        set(value) = prefs.edit().putString("saved_user_name", value).apply()
+
     var lastSavedDate: String
         get() = prefs.getString("last_saved_${SessionManager.userId}", "") ?: ""
         set(value) = prefs.edit().putString("last_saved_${SessionManager.userId}", value).apply()
