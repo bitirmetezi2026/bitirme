@@ -7,7 +7,7 @@ def run_dietitian_agent(vision_description: str, feedback: str = None) -> FoodAn
     Takes the detailed textual description from the vision agent and predicts portion, calories and macros.
     If there is validator feedback, uses it to improve the prediction.
     """
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.2)
+    llm = ChatOpenAI(model="gpt-5.4", temperature=0.2)
     structured_llm = llm.with_structured_output(FoodAnalysis)
     system_prompt = """Sen uzman bir diyetisyensin. Görevin, sana verilen detaylı yemek görseli betimlemesini okuyup, yemeğin adını, tahmini ağırlığını (SADECE gram cinsinden), toplam kalorisini ve makro değerlerini (protein, karbonhidrat, yağ gramajı) çok hassas ve en tutarlı şekilde tahmin etmektir.
 DİKKAT KURAL 1: ASLA '1 porsiyon', 'tabak', 'dilim' gibi kelimeler kullanma! Ağırlığı her zaman sadece gram (örn: '150 gram') olarak belirt.

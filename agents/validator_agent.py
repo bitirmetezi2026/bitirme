@@ -6,7 +6,7 @@ def run_validator_agent(vision_description: str, food_analysis: FoodAnalysis) ->
     """
     Checks if the dietitian's analysis makes sense given the visual description.
     """
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model="gpt-5.4", temperature=0)
     structured_llm = llm.with_structured_output(ValidatorFeedback)
     
     system_prompt = """Sen kıdemli bir denetici diyetisyensin. Görevin, asistan diyetisyenin yaptığı kalori ve makro hesaplamalarının mantıklı ve gerçekçi olup olmadığını kontrol etmektir. 
