@@ -55,6 +55,9 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.*
 import com.example.caloriecalculator.ui.theme.*
+import okhttp3.MultipartBody
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -698,7 +701,7 @@ fun StatisticScreen() {
                 val imagePart = if (bmp != null) ImageUtils.bitmapToMultipart(bmp, context)
                 else if (uri != null) ImageUtils.uriToMultipart(uri, context) else null
                 
-                val textPart = if (!text.isNullOrBlank()) okhttp3.RequestBody.create(okhttp3.MediaType.parse("text/plain"), text) else null
+                val textPart = if (!text.isNullOrBlank()) text.toRequestBody("text/plain".toMediaTypeOrNull()) else null
 
                 if (imagePart != null || textPart != null) {
                     val maxCal = PersistenceManager.getTargetCalories()
