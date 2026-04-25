@@ -233,6 +233,10 @@ object PersistenceManager {
         get() = prefs.getString("dietary_restrictions_${SessionManager.userId}", "") ?: ""
         set(value) = prefs.edit().putString("dietary_restrictions_${SessionManager.userId}", value).apply()
 
+    var favoriteRecipes: Set<String>
+        get() = prefs.getStringSet("favorite_recipes_${SessionManager.userId}", emptySet()) ?: emptySet()
+        set(value) = prefs.edit().putStringSet("favorite_recipes_${SessionManager.userId}", value).apply()
+
     fun getTargetCalories(): Float {
         // 1. BMR Hesapla (Mifflin-St Jeor)
         var bmr = 10f * kiloKg + 6.25f * boyCm - 5f * yas

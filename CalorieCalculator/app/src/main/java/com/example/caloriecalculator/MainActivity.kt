@@ -683,6 +683,10 @@ fun StatisticScreen() {
     var ingredientList by remember { mutableStateOf(listOf<IngredientItem>()) }
     var currentIngredient by remember { mutableStateOf("") }
     var currentAmount by remember { mutableStateOf("") }
+    
+    var selectedTab by remember { mutableStateOf("Tüm Tarifler") }
+    var favoriteRecipeNames by remember { mutableStateOf(PersistenceManager.favoriteRecipes) }
+    var searchQuery by remember { mutableStateOf("") }
 
     val loadingPhrases = listOf("Malzemeler hazırlanıyor...", "Yapay zeka şefi tabağını inceliyor...", "Kaloriler hesaplanıyor...", "Özel tarifler yazılıyor...")
     var currentPhraseIndex by remember { mutableIntStateOf(0) }
@@ -789,7 +793,22 @@ fun StatisticScreen() {
                         item { Text("Malzemelere uygun tarif bulunamadı.", color = TextGray) }
                     } else {
                         items(recipes) { recipe ->
-                            RecipeCard(recipe)
+                            RecipeCard(
+                                recipe = recipe,
+                                isFavorite = favoriteRecipeNames.contains(recipe.name),
+                                onFavoriteToggle = {
+                                    val newFavs = favoriteRecipeNames.toMutableSet()
+                                    if (newFavs.contains(recipe.name)) newFavs.remove(recipe.name) else newFavs.add(recipe.name)
+                                    PersistenceManager.favoriteRecipes = newFavs
+                                    favoriteRecipeNames = newFavs
+                                },
+                                onAddClick = {
+                                    val currentCals = PersistenceManager.getMealCalorie("snack")
+                                    val calValue = recipe.calories.split(" ").firstOrNull()?.toFloatOrNull() ?: 0f
+                                    PersistenceManager.saveMealCalorie("snack", currentCals + calValue)
+                                    android.widget.Toast.makeText(context, "${recipe.name} Atıştırmalık öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            )
                             Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
@@ -797,11 +816,85 @@ fun StatisticScreen() {
             } else if (!isLoading) {
                 // Eğer AI sonucu yoksa varsayılan hazır tarifleri göster
                 item {
-                    Text("Öne Çıkan Tarifler", fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
+                    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                        // Search Bar
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            placeholder = { Text("Tarif ara...") },
+                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Ara", tint = PrimaryGreen) },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Filled.Clear, contentDescription = "Temizle", tint = TextGray)
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            singleLine = true,
+                            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryGreen,
+                                unfocusedBorderColor = Color.LightGray,
+                                focusedContainerColor = SoftWhite,
+                                unfocusedContainerColor = SoftWhite
+                            )
+                        )
+                        
+                        // Tabs
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            val tabs = listOf("Tüm Tarifler", "Favorilerim")
+                            tabs.forEach { tab ->
+                                val isSelected = selectedTab == tab
+                                Surface(
+                                    modifier = Modifier.weight(1f).clickable { selectedTab = tab },
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = if (isSelected) PrimaryGreen else SoftWhite,
+                                    border = if (!isSelected) BorderStroke(1.dp, Color.LightGray) else null
+                                ) {
+                                    Text(
+                                        text = tab,
+                                        modifier = Modifier.padding(vertical = 10.dp),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        color = if (isSelected) Color.White else TextGray,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
-                items(staticHealthyRecipes) { recipe ->
-                    RecipeCard(recipe)
-                    Spacer(modifier = Modifier.height(16.dp))
+                
+                val recipesToShow = staticHealthyRecipes.filter { recipe ->
+                    val matchesTab = if (selectedTab == "Favorilerim") favoriteRecipeNames.contains(recipe.name) else true
+                    val matchesSearch = recipe.name.contains(searchQuery, ignoreCase = true)
+                    matchesTab && matchesSearch
+                }
+
+                if (recipesToShow.isEmpty() && selectedTab == "Favorilerim") {
+                    item { Text("Henüz favori tarifiniz yok.", color = Color.Gray, modifier = Modifier.padding(top = 16.dp)) }
+                } else {
+                    items(recipesToShow) { recipe ->
+                        RecipeCard(
+                            recipe = recipe,
+                            isFavorite = favoriteRecipeNames.contains(recipe.name),
+                            onFavoriteToggle = {
+                                val newFavs = favoriteRecipeNames.toMutableSet()
+                                if (newFavs.contains(recipe.name)) newFavs.remove(recipe.name) else newFavs.add(recipe.name)
+                                PersistenceManager.favoriteRecipes = newFavs
+                                favoriteRecipeNames = newFavs
+                            },
+                            onAddClick = {
+                                val currentCals = PersistenceManager.getMealCalorie("snack")
+                                val calValue = recipe.calories.split(" ").firstOrNull()?.toFloatOrNull() ?: 0f
+                                PersistenceManager.saveMealCalorie("snack", currentCals + calValue)
+                                android.widget.Toast.makeText(context, "${recipe.name} Atıştırmalık öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
                 }
             }
         }
@@ -978,7 +1071,12 @@ fun StatisticScreen() {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun RecipeCard(recipe: Recipe) {
+fun RecipeCard(
+    recipe: Recipe,
+    isFavorite: Boolean = false,
+    onFavoriteToggle: (() -> Unit)? = null,
+    onAddClick: (() -> Unit)? = null
+) {
     var expanded by remember { mutableStateOf(false) }
     Card(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -1012,7 +1110,19 @@ fun RecipeCard(recipe: Recipe) {
                         Text(recipe.calories, color = PrimaryGreen, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
-                Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null, tint = TextGray)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (onFavoriteToggle != null) {
+                        IconButton(onClick = onFavoriteToggle, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Filled.Star, contentDescription = "Favori", tint = if (isFavorite) Color(0xFFFFC107) else Color(0xFFE0E0E0))
+                        }
+                    }
+                    if (onAddClick != null) {
+                        IconButton(onClick = onAddClick, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Filled.AddCircle, contentDescription = "Kaloriyi Ekle", tint = PrimaryGreen)
+                        }
+                    }
+                    Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null, tint = TextGray, modifier = Modifier.padding(start = 4.dp))
+                }
             }
             
             Text(recipe.description, fontSize = 14.sp, color = TextGray, modifier = Modifier.padding(top = 12.dp))
