@@ -581,6 +581,46 @@ fun CalculateScreen() {
     }
 }
 
+// --- STATIK TARIF VERI SETI ---
+val staticHealthyRecipes = listOf(
+    Recipe(
+        name = "Avokadolu Tam Buğday Tost",
+        description = "Sağlıklı yağlar ve kompleks karbonhidratlarla dolu, güne enerjik başlamanı sağlayacak harika bir kahvaltı seçeneği.",
+        ingredients = listOf("2 dilim tam buğday ekmeği", "1 adet olgun avokado", "1 yemek kaşığı zeytinyağı", "Limon suyu, tuz, karabiber", "İsteğe bağlı: Çeri domates, çörek otu"),
+        steps = listOf(
+            "Ekmekleri hafifçe kızartın.",
+            "Avokadoyu bir kasede ezin, içine zeytinyağı, birkaç damla limon suyu, tuz ve karabiber ekleyin.",
+            "Ezilmiş avokadoyu kızarmış ekmeklerin üzerine kalın bir tabaka halinde sürün.",
+            "Üzerine dilimlenmiş çeri domates ve çörek otu serpiştirerek servis yapın."
+        ),
+        calories = "Tahmini Gramaj: 180 gram | 100g Değeri: 160 kcal | Toplam: 288 kcal"
+    ),
+    Recipe(
+        name = "Izgara Somon ve Kinoa",
+        description = "Yüksek Omega-3 ve protein içeren, akşam yemekleri için hafif ama çok doyurucu bir tarif.",
+        ingredients = listOf("150g somon fileto", "3 yemek kaşığı haşlanmış kinoa", "Yarım demet kuşkonmaz", "1 tatlı kaşığı zeytinyağı", "Limon, tuz, karabiber"),
+        steps = listOf(
+            "Somonu zeytinyağı, tuz ve karabiber ile marine edin.",
+            "Kuşkonmazları fırın tepsisine dizip hafifçe yağlayın.",
+            "Somonu ve kuşkonmazları önceden ısıtılmış 200 derece fırında veya ızgarada 12-15 dakika pişirin.",
+            "Haşlanmış kinoa yatağında limon dilimleriyle servis yapın."
+        ),
+        calories = "Tahmini Gramaj: 250 gram | 100g Değeri: 140 kcal | Toplam: 350 kcal"
+    ),
+    Recipe(
+        name = "Fit Orman Meyveli Yulaf",
+        description = "Tatlı krizlerini kesen, lif oranı yüksek ve bağırsak dostu fit yulaf lapası.",
+        ingredients = listOf("4 yemek kaşığı yulaf ezmesi", "1 su bardağı badem sütü (veya yarım yağlı süt)", "Yarım muz", "1 avuç yaban mersini veya böğürtlen", "1 tatlı kaşığı chia tohumu"),
+        steps = listOf(
+            "Yulaf ve sütü küçük bir tencereye alın, kısık ateşte lapa kıvamına gelene kadar pişirin.",
+            "İçine chia tohumunu ekleyip karıştırın ve ocaktan alın.",
+            "Kaseye aldığınız yulafın üzerini muz dilimleri ve orman meyveleriyle süsleyin.",
+            "İsteğe bağlı olarak 1 çay kaşığı tarçın veya bal gezdirebilirsiniz."
+        ),
+        calories = "Tahmini Gramaj: 200 gram | 100g Değeri: 110 kcal | Toplam: 220 kcal"
+    )
+)
+
 // --- 3. NE YESEM (RECIPE) SCREEN ---
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -593,92 +633,104 @@ fun StatisticScreen() {
     var isLoading by remember { mutableStateOf(false) }
     var recipeResult by remember { mutableStateOf<RecipeResponse?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showSourceDialog by remember { mutableStateOf(false) }
+    var triggerApiCall by remember { mutableStateOf(false) }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) { selectedImageUri = uri; capturedImageBitmap = null; recipeResult = null }
+        if (uri != null) { selectedImageUri = uri; capturedImageBitmap = null; triggerApiCall = true }
     }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        if (bitmap != null) { capturedImageBitmap = bitmap; selectedImageUri = null; recipeResult = null }
+        if (bitmap != null) { capturedImageBitmap = bitmap; selectedImageUri = null; triggerApiCall = true }
+    }
+
+    LaunchedEffect(triggerApiCall) {
+        if (triggerApiCall) {
+            triggerApiCall = false
+            isLoading = true
+            errorMessage = null
+            recipeResult = null
+            try {
+                val imagePart = if (capturedImageBitmap != null) ImageUtils.bitmapToMultipart(capturedImageBitmap!!, context)
+                else if (selectedImageUri != null) ImageUtils.uriToMultipart(selectedImageUri!!, context) else null
+                
+                if (imagePart != null) {
+                    val maxCal = PersistenceManager.getTargetCalories()
+                    val eatenCal = PersistenceManager.getMealCalorie("breakfast") + PersistenceManager.getMealCalorie("lunch") + PersistenceManager.getMealCalorie("dinner") + PersistenceManager.getMealCalorie("snack")
+                    val leftCal = (maxCal - eatenCal).toInt().coerceAtLeast(0).toString()
+                    val restr = PersistenceManager.dietaryRestrictions.ifBlank { null }
+                    
+                    recipeResult = RetrofitClient.instance.getRecipeRecommendations(imagePart, kalanKalori = leftCal, kisitlamalar = restr)
+                } else {
+                    errorMessage = "Lütfen önce bir fotoğraf çekin veya seçin."
+                }
+            } catch (e: Exception) { errorMessage = e.localizedMessage }
+            finally { isLoading = false }
+        }
+    }
+
+    if (showSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showSourceDialog = false },
+            title = { Text("Fotoğraf Yükle", fontWeight = FontWeight.Bold, color = PrimaryGreen) },
+            text = { Text("Malzemelerinin fotoğrafını nasıl yüklemek istersin?", fontSize = 16.sp) },
+            confirmButton = {
+                TextButton(onClick = { 
+                    showSourceDialog = false
+                    cameraLauncher.launch(null)
+                }) { Text("Kamera", color = PrimaryGreen, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showSourceDialog = false
+                    galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }) { Text("Galeri", color = PrimaryGreen, fontWeight = FontWeight.Bold) }
+            }
+        )
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize().background(SoftWhite).padding(horizontal = 16.dp), contentPadding = PaddingValues(top = 24.dp, bottom = 80.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         item {
-            Text(stringResource(R.string.nav_statistic), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color(0xFF222222))
+            Text("Sağlıklı Tarifler", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color(0xFF222222))
             Spacer(modifier = Modifier.height(20.dp))
         }
 
         item {
-            Box(modifier = Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(24.dp)).background(Color.White).clickable { galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, contentAlignment = Alignment.Center) {
-                if (capturedImageBitmap != null) {
-                    Image(bitmap = capturedImageBitmap!!.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                } else if (selectedImageUri != null) {
-                    androidx.compose.ui.viewinterop.AndroidView(factory = { ctx -> android.widget.ImageView(ctx).apply { scaleType = android.widget.ImageView.ScaleType.CENTER_CROP; setImageURI(selectedImageUri) } }, modifier = Modifier.fillMaxSize())
-                } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Filled.Upload, contentDescription = null, tint = PrimaryGreen.copy(alpha = 0.5f), modifier = Modifier.size(48.dp))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(stringResource(R.string.gallery_button), color = TextGray)
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { cameraLauncher.launch(null) }, modifier = Modifier.weight(1f).height(50.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = LeafGreen)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Filled.CameraAlt, contentDescription = null); Spacer(modifier = Modifier.width(8.dp)); Text(stringResource(R.string.camera_button)) }
-                }
-                Button(onClick = { galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, modifier = Modifier.weight(1f).height(50.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = LeafGreen)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Filled.Image, contentDescription = null); Spacer(modifier = Modifier.width(8.dp)); Text(stringResource(R.string.gallery_button)) }
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        item {
             Button(
-                onClick = {
-                    isLoading = true
-                    errorMessage = null
-                    coroutineScope.launch {
-                        try {
-                            val imagePart = if (capturedImageBitmap != null) ImageUtils.bitmapToMultipart(capturedImageBitmap!!, context)
-                            else if (selectedImageUri != null) ImageUtils.uriToMultipart(selectedImageUri!!, context) else null
-                            
-                            if (imagePart != null) {
-                                val maxCal = PersistenceManager.getTargetCalories()
-                                val eatenCal = PersistenceManager.getMealCalorie("breakfast") + PersistenceManager.getMealCalorie("lunch") + PersistenceManager.getMealCalorie("dinner") + PersistenceManager.getMealCalorie("snack")
-                                val leftCal = (maxCal - eatenCal).toInt().coerceAtLeast(0).toString()
-                                val restr = PersistenceManager.dietaryRestrictions.ifBlank { null }
-                                
-                                recipeResult = RetrofitClient.instance.getRecipeRecommendations(imagePart, kalanKalori = leftCal, kisitlamalar = restr)
-                            } else {
-                                errorMessage = "Lütfen önce bir fotoğraf çekin veya seçin."
-                            }
-                        } catch (e: Exception) { errorMessage = e.localizedMessage }
-                        finally { isLoading = false }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                onClick = { showSourceDialog = true },
+                modifier = Modifier.fillMaxWidth().height(60.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
                 enabled = !isLoading
             ) {
-                if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                else Text(stringResource(R.string.get_recipe_button), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                if (isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Şef Düşünüyor...", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                } else {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Color.White)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("✨ Sihirli Şef Asistanı", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
             }
-            if (errorMessage != null) Text(errorMessage!!, color = Color.Red, modifier = Modifier.padding(top = 8.dp))
+            if (errorMessage != null) {
+                Text(errorMessage!!, color = Color.Red, modifier = Modifier.padding(top = 8.dp))
+            }
             Spacer(modifier = Modifier.height(24.dp))
         }
 
         if (recipeResult != null) {
             item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("✨ Şefin Önerileri", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = PrimaryGreen)
+                    TextButton(onClick = { recipeResult = null; selectedImageUri = null; capturedImageBitmap = null }) {
+                        Text("Temizle", color = Color.Red, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                
                 if (recipeResult?.status == "success") {
-                    Text(stringResource(R.string.detected_ingredients_title), fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
-                    if (recipeResult?.detected_ingredients.isNullOrEmpty()) {
-                        Text("Yapay zeka fotoğrafta malzeme tespit edemedi.", color = TextGray, fontSize = 14.sp, modifier = Modifier.padding(vertical = 8.dp))
-                    } else {
+                    if (!recipeResult?.detected_ingredients.isNullOrEmpty()) {
+                        Text(stringResource(R.string.detected_ingredients_title), fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth())
                         FlowRow(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             recipeResult?.detected_ingredients?.forEach { ingredient ->
                                 Surface(shape = RoundedCornerShape(20.dp), color = LeafGreen.copy(alpha = 0.15f), border = BorderStroke(1.dp, LeafGreen.copy(alpha = 0.3f))) {
@@ -686,11 +738,11 @@ fun StatisticScreen() {
                                 }
                             }
                         }
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 } else {
                     Text("Sunucu Hatası: ${recipeResult?.status}", color = Color.Red, modifier = Modifier.fillMaxWidth())
                 }
-                Spacer(modifier = Modifier.height(16.dp))
             }
 
             if (recipeResult?.status == "success") {
@@ -703,6 +755,15 @@ fun StatisticScreen() {
                         Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
+            }
+        } else {
+            // Eğer AI sonucu yoksa varsayılan hazır tarifleri göster
+            item {
+                Text("Öne Çıkan Tarifler", fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
+            }
+            items(staticHealthyRecipes) { recipe ->
+                RecipeCard(recipe)
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
