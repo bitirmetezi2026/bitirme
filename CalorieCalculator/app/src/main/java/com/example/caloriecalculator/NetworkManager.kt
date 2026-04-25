@@ -97,7 +97,8 @@ data class Recipe(
     val description: String,
     val ingredients: List<String>,
     val steps: List<String>,
-    val calories: String
+    val calories: String,
+    val imageRes: Int? = null
 )
 
 // --- API ARAYÜZÜ ---

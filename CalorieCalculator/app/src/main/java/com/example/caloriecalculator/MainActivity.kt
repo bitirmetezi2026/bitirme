@@ -593,7 +593,8 @@ val staticHealthyRecipes = listOf(
             "Ezilmiş avokadoyu kızarmış ekmeklerin üzerine kalın bir tabaka halinde sürün.",
             "Üzerine dilimlenmiş çeri domates ve çörek otu serpiştirerek servis yapın."
         ),
-        calories = "288 kcal | Protein: 6g | Karb: 28g | Yağ: 18g"
+        calories = "288 kcal | Protein: 6g | Karb: 28g | Yağ: 18g",
+        imageRes = R.drawable.avovado
     ),
     Recipe(
         name = "Izgara Somon ve Kinoa",
@@ -841,7 +842,16 @@ fun RecipeCard(recipe: Recipe) {
     Card(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(LightGreenBg), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Restaurant, contentDescription = null, tint = PrimaryGreen) }
+                if (recipe.imageRes != null) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = recipe.imageRes),
+                        contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.size(60.dp).clip(RoundedCornerShape(12.dp))
+                    )
+                } else {
+                    Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(LightGreenBg), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Restaurant, contentDescription = null, tint = PrimaryGreen) }
+                }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(recipe.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
