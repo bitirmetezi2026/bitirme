@@ -839,6 +839,7 @@ fun StatisticScreen() {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RecipeCard(recipe: Recipe) {
     var expanded by remember { mutableStateOf(false) }
@@ -857,8 +858,22 @@ fun RecipeCard(recipe: Recipe) {
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(recipe.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text(recipe.calories, color = PrimaryGreen, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(recipe.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    
+                    val calParts = recipe.calories.split("|").map { it.trim() }
+                    if (calParts.size > 1) {
+                        Text(calParts[0], color = PrimaryGreen, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            for (i in 1 until calParts.size) {
+                                Surface(shape = RoundedCornerShape(6.dp), color = SoftWhite, border = BorderStroke(0.5.dp, Color.LightGray)) {
+                                    Text(calParts[i], fontSize = 10.sp, color = TextGray, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                }
+                            }
+                        }
+                    } else {
+                        Text(recipe.calories, color = PrimaryGreen, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
                 Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null, tint = TextGray)
             }
