@@ -593,7 +593,7 @@ val staticHealthyRecipes = listOf(
             "Ezilmiş avokadoyu kızarmış ekmeklerin üzerine kalın bir tabaka halinde sürün.",
             "Üzerine dilimlenmiş çeri domates ve çörek otu serpiştirerek servis yapın."
         ),
-        calories = "Tahmini Gramaj: 180 gram | 100g Değeri: 160 kcal | Toplam: 288 kcal"
+        calories = "288 kcal"
     ),
     Recipe(
         name = "Izgara Somon ve Kinoa",
@@ -605,7 +605,7 @@ val staticHealthyRecipes = listOf(
             "Somonu ve kuşkonmazları önceden ısıtılmış 200 derece fırında veya ızgarada 12-15 dakika pişirin.",
             "Haşlanmış kinoa yatağında limon dilimleriyle servis yapın."
         ),
-        calories = "Tahmini Gramaj: 250 gram | 100g Değeri: 140 kcal | Toplam: 350 kcal"
+        calories = "350 kcal"
     ),
     Recipe(
         name = "Fit Orman Meyveli Yulaf",
@@ -617,7 +617,42 @@ val staticHealthyRecipes = listOf(
             "Kaseye aldığınız yulafın üzerini muz dilimleri ve orman meyveleriyle süsleyin.",
             "İsteğe bağlı olarak 1 çay kaşığı tarçın veya bal gezdirebilirsiniz."
         ),
-        calories = "Tahmini Gramaj: 200 gram | 100g Değeri: 110 kcal | Toplam: 220 kcal"
+        calories = "220 kcal"
+    ),
+    Recipe(
+        name = "Fırınlanmış Çıtır Nohut Salata",
+        description = "Bitkisel protein deposu, doyurucu ve çok pratik bir vegan salata.",
+        ingredients = listOf("1 su bardağı haşlanmış nohut", "1 tatlı kaşığı zeytinyağı, toz biber, kimyon", "Yarım demet marul", "Çeri domates, salatalık", "1 yemek kaşığı limon suyu"),
+        steps = listOf(
+            "Nohutları zeytinyağı ve baharatlarla harmanlayıp 200 derece fırında 15 dakika çıtırlaşana kadar pişirin.",
+            "Yeşillikleri doğrayıp geniş bir kaseye alın.",
+            "Üzerine çıtır nohutları ekleyin.",
+            "Limon suyu ve çok az zeytinyağı gezdirerek servis yapın."
+        ),
+        calories = "210 kcal"
+    ),
+    Recipe(
+        name = "Fıstık Ezmeli Muzlu Smoothie",
+        description = "Antrenman öncesi veya sonrası için ideal, hızlı enerji veren sıvı öğün.",
+        ingredients = listOf("1 adet donmuş muz", "1 yemek kaşığı şekersiz fıstık ezmesi", "1 su bardağı süt", "1 çay kaşığı tarçın"),
+        steps = listOf(
+            "Tüm malzemeleri blendera ekleyin.",
+            "Pürüzsüz ve kremsi bir kıvam alana kadar yüksek devirde çekin.",
+            "Soğuk servis yapın."
+        ),
+        calories = "310 kcal"
+    ),
+    Recipe(
+        name = "Sebzeli Mantarlı Omlet",
+        description = "Düşük karbonhidratlı, yüksek proteinli ve çok lezzetli kahvaltı alternatifi.",
+        ingredients = listOf("2 adet yumurta", "3-4 adet kültür mantarı", "1 avuç ıspanak", "1 çay kaşığı tereyağı", "Tuz, karabiber, pulbiber"),
+        steps = listOf(
+            "Mantarları ince ince dilimleyin ve tereyağında hafifçe soteleyin.",
+            "Üzerine ıspanakları ekleyip sönene kadar 1-2 dakika daha soteleyin.",
+            "Yumurtaları bir kasede çırpın, tuz ve baharatları ekleyin.",
+            "Çırpılmış yumurtayı tavaya dökün ve kısık ateşte pişirin."
+        ),
+        calories = "190 kcal"
     )
 )
 
@@ -633,8 +668,8 @@ fun StatisticScreen() {
     var isLoading by remember { mutableStateOf(false) }
     var recipeResult by remember { mutableStateOf<RecipeResponse?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var showSourceDialog by remember { mutableStateOf(false) }
     var triggerApiCall by remember { mutableStateOf(false) }
+    var isFabExpanded by remember { mutableStateOf(false) }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) { selectedImageUri = uri; capturedImageBitmap = null; triggerApiCall = true }
@@ -668,102 +703,122 @@ fun StatisticScreen() {
         }
     }
 
-    if (showSourceDialog) {
-        AlertDialog(
-            onDismissRequest = { showSourceDialog = false },
-            title = { Text("Fotoğraf Yükle", fontWeight = FontWeight.Bold, color = PrimaryGreen) },
-            text = { Text("Malzemelerinin fotoğrafını nasıl yüklemek istersin?", fontSize = 16.sp) },
-            confirmButton = {
-                TextButton(onClick = { 
-                    showSourceDialog = false
-                    cameraLauncher.launch(null)
-                }) { Text("Kamera", color = PrimaryGreen, fontWeight = FontWeight.Bold) }
-            },
-            dismissButton = {
-                TextButton(onClick = { 
-                    showSourceDialog = false
-                    galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }) { Text("Galeri", color = PrimaryGreen, fontWeight = FontWeight.Bold) }
-            }
-        )
-    }
-
-    LazyColumn(modifier = Modifier.fillMaxSize().background(SoftWhite).padding(horizontal = 16.dp), contentPadding = PaddingValues(top = 24.dp, bottom = 80.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        item {
-            Text("Sağlıklı Tarifler", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color(0xFF222222))
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-
-        item {
-            Button(
-                onClick = { showSourceDialog = true },
-                modifier = Modifier.fillMaxWidth().height(60.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
-                enabled = !isLoading
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("Şef Düşünüyor...", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                } else {
-                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Color.White)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("✨ Sihirli Şef Asistanı", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                }
-            }
-            if (errorMessage != null) {
-                Text(errorMessage!!, color = Color.Red, modifier = Modifier.padding(top = 8.dp))
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        if (recipeResult != null) {
+    Box(modifier = Modifier.fillMaxSize().background(SoftWhite)) {
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("✨ Şefin Önerileri", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = PrimaryGreen)
-                    TextButton(onClick = { recipeResult = null; selectedImageUri = null; capturedImageBitmap = null }) {
-                        Text("Temizle", color = Color.Red, fontWeight = FontWeight.Bold)
+                Text("Ne Yesem?", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color(0xFF222222))
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            if (isLoading) {
+                item {
+                    Column(modifier = Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = PrimaryGreen)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Yapay Zeka Şefi Düşünüyor...", color = TextGray, fontWeight = FontWeight.SemiBold)
                     }
                 }
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
-                
-                if (recipeResult?.status == "success") {
-                    if (!recipeResult?.detected_ingredients.isNullOrEmpty()) {
-                        Text(stringResource(R.string.detected_ingredients_title), fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth())
-                        FlowRow(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            recipeResult?.detected_ingredients?.forEach { ingredient ->
-                                Surface(shape = RoundedCornerShape(20.dp), color = LeafGreen.copy(alpha = 0.15f), border = BorderStroke(1.dp, LeafGreen.copy(alpha = 0.3f))) {
-                                    Text(text = ingredient, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), fontSize = 12.sp, color = Color(0xFF2E7D32))
+            }
+
+            if (errorMessage != null) {
+                item {
+                    Text(errorMessage!!, color = Color.Red, modifier = Modifier.padding(top = 8.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+            }
+
+            if (recipeResult != null) {
+                item {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("✨ Şefin Önerileri", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = PrimaryGreen)
+                        TextButton(onClick = { recipeResult = null; selectedImageUri = null; capturedImageBitmap = null }) {
+                            Text("Temizle", color = Color.Red, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    
+                    if (recipeResult?.status == "success") {
+                        if (!recipeResult?.detected_ingredients.isNullOrEmpty()) {
+                            Text(stringResource(R.string.detected_ingredients_title), fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth())
+                            FlowRow(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                recipeResult?.detected_ingredients?.forEach { ingredient ->
+                                    Surface(shape = RoundedCornerShape(20.dp), color = LeafGreen.copy(alpha = 0.15f), border = BorderStroke(1.dp, LeafGreen.copy(alpha = 0.3f))) {
+                                        Text(text = ingredient, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), fontSize = 12.sp, color = Color(0xFF2E7D32))
+                                    }
                                 }
                             }
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
+                    } else {
+                        Text("Sunucu Hatası: ${recipeResult?.status}", color = Color.Red, modifier = Modifier.fillMaxWidth())
                     }
-                } else {
-                    Text("Sunucu Hatası: ${recipeResult?.status}", color = Color.Red, modifier = Modifier.fillMaxWidth())
                 }
-            }
 
-            if (recipeResult?.status == "success") {
-                val recipes = recipeResult?.recommendations?.recipes ?: emptyList()
-                if (recipes.isEmpty() && !(recipeResult?.detected_ingredients.isNullOrEmpty())) {
-                    item { Text("Malzemelere uygun tarif bulunamadı.", color = TextGray) }
-                } else {
-                    items(recipes) { recipe ->
-                        RecipeCard(recipe)
-                        Spacer(modifier = Modifier.height(16.dp))
+                if (recipeResult?.status == "success") {
+                    val recipes = recipeResult?.recommendations?.recipes ?: emptyList()
+                    if (recipes.isEmpty() && !(recipeResult?.detected_ingredients.isNullOrEmpty())) {
+                        item { Text("Malzemelere uygun tarif bulunamadı.", color = TextGray) }
+                    } else {
+                        items(recipes) { recipe ->
+                            RecipeCard(recipe)
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
                     }
                 }
+            } else if (!isLoading) {
+                // Eğer AI sonucu yoksa varsayılan hazır tarifleri göster
+                item {
+                    Text("Öne Çıkan Tarifler", fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
+                }
+                items(staticHealthyRecipes) { recipe ->
+                    RecipeCard(recipe)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
-        } else {
-            // Eğer AI sonucu yoksa varsayılan hazır tarifleri göster
-            item {
-                Text("Öne Çıkan Tarifler", fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
+        }
+
+        // --- Expandable FAB ---
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .padding(bottom = 60.dp), // BottomNav padding
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            androidx.compose.animation.AnimatedVisibility(visible = isFabExpanded) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    androidx.compose.material3.SmallFloatingActionButton(
+                        onClick = { 
+                            isFabExpanded = false
+                            cameraLauncher.launch(null)
+                        },
+                        containerColor = Color.White,
+                        contentColor = PrimaryGreen
+                    ) {
+                        Icon(Icons.Filled.CameraAlt, contentDescription = "Kamera")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    androidx.compose.material3.SmallFloatingActionButton(
+                        onClick = { 
+                            isFabExpanded = false
+                            galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                        containerColor = Color.White,
+                        contentColor = PrimaryGreen
+                    ) {
+                        Icon(Icons.Filled.Image, contentDescription = "Galeri")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
-            items(staticHealthyRecipes) { recipe ->
-                RecipeCard(recipe)
-                Spacer(modifier = Modifier.height(16.dp))
+            
+            FloatingActionButton(
+                onClick = { isFabExpanded = !isFabExpanded },
+                containerColor = PrimaryGreen,
+                contentColor = Color.White,
+                shape = CircleShape
+            ) {
+                Icon(if (isFabExpanded) Icons.Filled.Close else Icons.Filled.AutoAwesome, contentDescription = "Sihirli Şef Asistanı")
             }
         }
     }
