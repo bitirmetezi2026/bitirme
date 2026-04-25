@@ -670,6 +670,19 @@ fun StatisticScreen() {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isFabExpanded by remember { mutableStateOf(false) }
 
+    val loadingPhrases = listOf("Malzemeler hazırlanıyor...", "Yapay zeka şefi tabağını inceliyor...", "Kaloriler hesaplanıyor...", "Özel tarifler yazılıyor...")
+    var currentPhraseIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(isLoading) {
+        if (isLoading) {
+            currentPhraseIndex = 0
+            while(true) {
+                kotlinx.coroutines.delay(2000)
+                currentPhraseIndex = (currentPhraseIndex + 1) % loadingPhrases.size
+            }
+        }
+    }
+
     val fetchAiRecipe: (Bitmap?, Uri?) -> Unit = { bmp, uri ->
         isLoading = true
         errorMessage = null
@@ -710,10 +723,10 @@ fun StatisticScreen() {
 
             if (isLoading) {
                 item {
-                    Column(modifier = Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = PrimaryGreen)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Yapay Zeka Şefi Düşünüyor...", color = TextGray, fontWeight = FontWeight.SemiBold)
+                    Column(modifier = Modifier.fillMaxWidth().padding(32.dp).height(300.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        CircularProgressIndicator(color = PrimaryGreen, modifier = Modifier.size(72.dp), strokeWidth = 6.dp)
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(loadingPhrases[currentPhraseIndex], color = PrimaryGreen, fontWeight = FontWeight.Bold, fontSize = 18.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
             }
@@ -727,13 +740,13 @@ fun StatisticScreen() {
 
             if (recipeResult != null) {
                 item {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("✨ Şefin Önerileri", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = PrimaryGreen)
-                        TextButton(onClick = { recipeResult = null; selectedImageUri = null; capturedImageBitmap = null }) {
-                            Text("Temizle", color = Color.Red, fontWeight = FontWeight.Bold)
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { recipeResult = null; selectedImageUri = null; capturedImageBitmap = null }) {
+                            Icon(Icons.Filled.ArrowBack, contentDescription = "Geri Dön", tint = PrimaryGreen)
                         }
+                        Text("✨ Şefin Önerileri", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = PrimaryGreen, modifier = Modifier.weight(1f))
                     }
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(modifier = Modifier.padding(bottom = 8.dp))
                     
                     if (recipeResult?.status == "success") {
                         if (!recipeResult?.detected_ingredients.isNullOrEmpty()) {
