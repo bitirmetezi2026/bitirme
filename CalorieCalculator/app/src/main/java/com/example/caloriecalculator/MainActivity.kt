@@ -663,6 +663,8 @@ val staticHealthyRecipes = listOf(
     )
 )
 
+data class IngredientItem(val name: String, val amount: String)
+
 // --- 3. NE YESEM (RECIPE) SCREEN ---
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -676,8 +678,11 @@ fun StatisticScreen() {
     var recipeResult by remember { mutableStateOf<RecipeResponse?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isFabExpanded by remember { mutableStateOf(false) }
-    var showManualInputDialog by remember { mutableStateOf(false) }
-    var manualIngredientsText by remember { mutableStateOf("") }
+    
+    var isManualInputScreenOpen by remember { mutableStateOf(false) }
+    var ingredientList by remember { mutableStateOf(listOf<IngredientItem>()) }
+    var currentIngredient by remember { mutableStateOf("") }
+    var currentAmount by remember { mutableStateOf("") }
 
     val loadingPhrases = listOf("Malzemeler hazırlanıyor...", "Yapay zeka şefi tabağını inceliyor...", "Kaloriler hesaplanıyor...", "Özel tarifler yazılıyor...")
     var currentPhraseIndex by remember { mutableIntStateOf(0) }
@@ -725,31 +730,7 @@ fun StatisticScreen() {
         if (bitmap != null) { capturedImageBitmap = bitmap; selectedImageUri = null; fetchAiRecipe(bitmap, null, null) }
     }
 
-    if (showManualInputDialog) {
-        AlertDialog(
-            onDismissRequest = { showManualInputDialog = false },
-            title = { Text("Malzemeleri Girin", fontWeight = FontWeight.Bold, color = PrimaryGreen) },
-            text = {
-                OutlinedTextField(
-                    value = manualIngredientsText,
-                    onValueChange = { manualIngredientsText = it },
-                    label = { Text("Örn: 2 domates, 1 soğan...") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { 
-                    showManualInputDialog = false
-                    if (manualIngredientsText.isNotBlank()) {
-                        fetchAiRecipe(null, null, manualIngredientsText)
-                    }
-                }) { Text("Gönder", color = PrimaryGreen, fontWeight = FontWeight.Bold) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showManualInputDialog = false }) { Text("İptal", color = Color.Gray) }
-            }
-        )
-    }
+    // Removed old AlertDialog
 
     Box(modifier = Modifier.fillMaxSize().background(SoftWhite)) {
         LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -838,7 +819,7 @@ fun StatisticScreen() {
                     androidx.compose.material3.SmallFloatingActionButton(
                         onClick = { 
                             isFabExpanded = false
-                            showManualInputDialog = true
+                            isManualInputScreenOpen = true
                         },
                         containerColor = Color.White,
                         contentColor = PrimaryGreen
@@ -880,8 +861,119 @@ fun StatisticScreen() {
                 Icon(if (isFabExpanded) Icons.Filled.Close else Icons.Filled.AutoAwesome, contentDescription = "Sihirli Şef Asistanı")
             }
         }
+
+        androidx.compose.animation.AnimatedVisibility(
+            visible = isManualInputScreenOpen,
+            enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }),
+            exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it })
+        ) {
+            Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+                Column(modifier = Modifier.fillMaxSize().padding(16.dp).padding(top = 24.dp)) {
+                    // Header
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        IconButton(onClick = { isManualInputScreenOpen = false }) { Icon(Icons.Filled.Close, contentDescription = "Kapat") }
+                        Text("Manuel Malzeme Ekle", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Spacer(modifier = Modifier.width(48.dp))
+                    }
+                    Divider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+                    
+                    // Input Section
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = currentIngredient,
+                            onValueChange = { currentIngredient = it },
+                            label = { Text("Malzeme (Örn: Tavuk)") },
+                            modifier = Modifier.weight(2f),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        OutlinedTextField(
+                            value = currentAmount,
+                            onValueChange = { currentAmount = it },
+                            label = { Text("Miktar (Örn: 200g)") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            if (currentIngredient.isNotBlank()) {
+                                ingredientList = ingredientList + IngredientItem(currentIngredient.trim(), currentAmount.trim())
+                                currentIngredient = ""
+                                currentAmount = ""
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+                    ) {
+                        Icon(Icons.Filled.Add, null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sepete Ekle", fontWeight = FontWeight.Bold)
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Eklenen Malzemeler", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextGray)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // List Section
+                    LazyColumn(modifier = Modifier.weight(1f)) {
+                        if (ingredientList.isEmpty()) {
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+                                    Text("Henüz malzeme eklemedin.", color = Color.Gray)
+                                }
+                            }
+                        }
+                        items(ingredientList) { item ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), 
+                                colors = CardDefaults.cardColors(containerColor = SoftWhite),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Filled.CheckCircle, null, tint = PrimaryGreen, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(item.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                                    if (item.amount.isNotBlank()) {
+                                        Surface(shape = RoundedCornerShape(6.dp), color = Color.LightGray.copy(alpha = 0.4f)) {
+                                            Text(item.amount, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = Color.DarkGray)
+                                        }
+                                    }
+                                    IconButton(onClick = { ingredientList = ingredientList.filter { it != item } }) {
+                                        Icon(Icons.Filled.Delete, null, tint = Color.Red.copy(alpha = 0.7f))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Submit Button
+                    Button(
+                        onClick = {
+                            if (ingredientList.isNotEmpty()) {
+                                isManualInputScreenOpen = false
+                                val textPayload = ingredientList.joinToString(", ") { 
+                                    if (it.amount.isNotBlank()) "${it.amount} ${it.name}" else it.name
+                                }
+                                fetchAiRecipe(null, null, textPayload)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(60.dp).padding(bottom = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        enabled = ingredientList.isNotEmpty(),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+                    ) {
+                        Icon(Icons.Filled.AutoAwesome, null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Şefe Gönder", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
     }
-}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
