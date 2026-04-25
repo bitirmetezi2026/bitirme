@@ -606,7 +606,8 @@ val staticHealthyRecipes = listOf(
             "Somonu ve kuşkonmazları önceden ısıtılmış 200 derece fırında veya ızgarada 12-15 dakika pişirin.",
             "Haşlanmış kinoa yatağında limon dilimleriyle servis yapın."
         ),
-        calories = "350 kcal | Protein: 32g | Karb: 15g | Yağ: 18g"
+        calories = "350 kcal | Protein: 32g | Karb: 15g | Yağ: 18g",
+        imageRes = R.drawable.grilled_salmon
     ),
     Recipe(
         name = "Fit Orman Meyveli Yulaf",
@@ -618,7 +619,8 @@ val staticHealthyRecipes = listOf(
             "Kaseye aldığınız yulafın üzerini muz dilimleri ve orman meyveleriyle süsleyin.",
             "İsteğe bağlı olarak 1 çay kaşığı tarçın veya bal gezdirebilirsiniz."
         ),
-        calories = "220 kcal | Protein: 8g | Karb: 36g | Yağ: 5g"
+        calories = "220 kcal | Protein: 8g | Karb: 36g | Yağ: 5g",
+        imageRes = R.drawable.forest_fruit_oats
     ),
     Recipe(
         name = "Fırınlanmış Çıtır Nohut Salata",
@@ -630,7 +632,8 @@ val staticHealthyRecipes = listOf(
             "Üzerine çıtır nohutları ekleyin.",
             "Limon suyu ve çok az zeytinyağı gezdirerek servis yapın."
         ),
-        calories = "210 kcal | Protein: 12g | Karb: 28g | Yağ: 6g"
+        calories = "210 kcal | Protein: 12g | Karb: 28g | Yağ: 6g",
+        imageRes = R.drawable.baked_chickpeas
     ),
     Recipe(
         name = "Fıstık Ezmeli Muzlu Smoothie",
