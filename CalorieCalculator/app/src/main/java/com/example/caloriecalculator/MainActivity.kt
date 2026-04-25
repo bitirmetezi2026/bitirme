@@ -665,6 +665,9 @@ fun StatisticScreen() {
     
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var capturedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    var recipeResult by remember { mutableStateOf<RecipeResponse?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     var isFabExpanded by remember { mutableStateOf(false) }
 
     val fetchAiRecipe: (Bitmap?, Uri?) -> Unit = { bmp, uri ->
