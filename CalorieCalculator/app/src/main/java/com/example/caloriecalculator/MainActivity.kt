@@ -673,6 +673,8 @@ fun StatisticScreen() {
     var recipeResult by remember { mutableStateOf<RecipeResponse?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isFabExpanded by remember { mutableStateOf(false) }
+    var showManualInputDialog by remember { mutableStateOf(false) }
+    var manualIngredientsText by remember { mutableStateOf("") }
 
     val loadingPhrases = listOf("Malzemeler hazırlanıyor...", "Yapay zeka şefi tabağını inceliyor...", "Kaloriler hesaplanıyor...", "Özel tarifler yazılıyor...")
     var currentPhraseIndex by remember { mutableIntStateOf(0) }
@@ -687,7 +689,7 @@ fun StatisticScreen() {
         }
     }
 
-    val fetchAiRecipe: (Bitmap?, Uri?) -> Unit = { bmp, uri ->
+    val fetchAiRecipe: (Bitmap?, Uri?, String?) -> Unit = { bmp, uri, text ->
         isLoading = true
         errorMessage = null
         recipeResult = null
@@ -696,15 +698,17 @@ fun StatisticScreen() {
                 val imagePart = if (bmp != null) ImageUtils.bitmapToMultipart(bmp, context)
                 else if (uri != null) ImageUtils.uriToMultipart(uri, context) else null
                 
-                if (imagePart != null) {
+                val textPart = if (!text.isNullOrBlank()) okhttp3.RequestBody.create(okhttp3.MediaType.parse("text/plain"), text) else null
+
+                if (imagePart != null || textPart != null) {
                     val maxCal = PersistenceManager.getTargetCalories()
                     val eatenCal = PersistenceManager.getMealCalorie("breakfast") + PersistenceManager.getMealCalorie("lunch") + PersistenceManager.getMealCalorie("dinner") + PersistenceManager.getMealCalorie("snack")
                     val leftCal = (maxCal - eatenCal).toInt().coerceAtLeast(0).toString()
                     val restr = PersistenceManager.dietaryRestrictions.ifBlank { null }
                     
-                    recipeResult = RetrofitClient.instance.getRecipeRecommendations(imagePart, kalanKalori = leftCal, kisitlamalar = restr)
+                    recipeResult = RetrofitClient.instance.getRecipeRecommendations(imagePart, textPart, leftCal, restr)
                 } else {
-                    errorMessage = "Lütfen önce bir fotoğraf çekin veya seçin."
+                    errorMessage = "Lütfen önce bir fotoğraf çekin, seçin veya malzeme girin."
                 }
             } catch (e: Exception) { errorMessage = e.localizedMessage }
             finally { isLoading = false }
@@ -712,10 +716,36 @@ fun StatisticScreen() {
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) { selectedImageUri = uri; capturedImageBitmap = null; fetchAiRecipe(null, uri) }
+        if (uri != null) { selectedImageUri = uri; capturedImageBitmap = null; fetchAiRecipe(null, uri, null) }
     }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        if (bitmap != null) { capturedImageBitmap = bitmap; selectedImageUri = null; fetchAiRecipe(bitmap, null) }
+        if (bitmap != null) { capturedImageBitmap = bitmap; selectedImageUri = null; fetchAiRecipe(bitmap, null, null) }
+    }
+
+    if (showManualInputDialog) {
+        AlertDialog(
+            onDismissRequest = { showManualInputDialog = false },
+            title = { Text("Malzemeleri Girin", fontWeight = FontWeight.Bold, color = PrimaryGreen) },
+            text = {
+                OutlinedTextField(
+                    value = manualIngredientsText,
+                    onValueChange = { manualIngredientsText = it },
+                    label = { Text("Örn: 2 domates, 1 soğan...") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { 
+                    showManualInputDialog = false
+                    if (manualIngredientsText.isNotBlank()) {
+                        fetchAiRecipe(null, null, manualIngredientsText)
+                    }
+                }) { Text("Gönder", color = PrimaryGreen, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showManualInputDialog = false }) { Text("İptal", color = Color.Gray) }
+            }
+        )
     }
 
     Box(modifier = Modifier.fillMaxSize().background(SoftWhite)) {
@@ -802,6 +832,17 @@ fun StatisticScreen() {
         ) {
             androidx.compose.animation.AnimatedVisibility(visible = isFabExpanded) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    androidx.compose.material3.SmallFloatingActionButton(
+                        onClick = { 
+                            isFabExpanded = false
+                            showManualInputDialog = true
+                        },
+                        containerColor = Color.White,
+                        contentColor = PrimaryGreen
+                    ) {
+                        Icon(Icons.Filled.Edit, contentDescription = "Manuel Malzeme Gir")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
                     androidx.compose.material3.SmallFloatingActionButton(
                         onClick = { 
                             isFabExpanded = false

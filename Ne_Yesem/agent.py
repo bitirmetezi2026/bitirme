@@ -28,6 +28,7 @@ class IngredientsList(BaseModel):
 # Define the Agent State
 class AgentState(TypedDict):
     image_base64: str
+    manual_ingredients: str
     ingredients: List[str]
     recipes: dict
     kalan_kalori: str
@@ -35,9 +36,16 @@ class AgentState(TypedDict):
 
 def extract_ingredients_node(state: AgentState):
     """
-    Node that takes the image and uses GPT-4o to identify ingredients.
+    Node that takes the image and uses GPT-4o to identify ingredients, or skips if manual ingredients are provided.
     """
+    manual_ingredients = state.get("manual_ingredients", "").strip()
+    if manual_ingredients:
+        # Bypass vision logic if user manually entered text
+        return {"ingredients": [manual_ingredients]}
+
     image_base64 = state["image_base64"]
+    if not image_base64:
+        return {"ingredients": []}
     
     # Initialize the vision model
     llm = ChatOpenAI(model="gpt-4o", temperature=0.0)
@@ -123,15 +131,16 @@ workflow.add_edge("generate_recipes", END)
 # Compile graph
 app_graph = workflow.compile()
 
-def process_fridge_image(image_bytes: bytes, kalan_kalori: str = None, kisitlamalar: str = None) -> dict:
+def process_fridge_image(image_bytes: bytes = None, manual_ingredients: str = None, kalan_kalori: str = None, kisitlamalar: str = None) -> dict:
     """
-    Main entry point function to process an image and return recipe recommendations.
+    Main entry point function to process an image or text and return recipe recommendations.
     """
-    image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+    image_base64 = base64.b64encode(image_bytes).decode('utf-8') if image_bytes else ""
     
     # Run the graph
     initial_state = {
         "image_base64": image_base64,
+        "manual_ingredients": manual_ingredients or "",
         "ingredients": [],
         "recipes": {},
         "kalan_kalori": kalan_kalori or "",

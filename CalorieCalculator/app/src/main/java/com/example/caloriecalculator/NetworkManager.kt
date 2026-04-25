@@ -143,7 +143,8 @@ interface DiyetApi {
     @Multipart
     @POST("recommend-recipes")
     suspend fun getRecipeRecommendations(
-        @Part file: MultipartBody.Part,
+        @Part file: MultipartBody.Part? = null,
+        @Part("manuel_malzemeler") manuelMalzemeler: okhttp3.RequestBody? = null,
         @Query("kalan_kalori") kalanKalori: String? = null,
         @Query("kisitlamalar") kisitlamalar: String? = null
     ): RecipeResponse

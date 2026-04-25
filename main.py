@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Query
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Query, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -353,19 +353,24 @@ async def analyze_food(file: UploadFile = File(...)):
 
 @app.post("/recommend-recipes")
 async def forward_to_ai_agent(
-    file: UploadFile = File(...),
+    file: UploadFile = File(None),
+    manuel_malzemeler: str = Form(None),
     kalan_kalori: str = Query(None),
     kisitlamalar: str = Query(None)
 ):
-    """Buzdolabı fotoğrafından tarif önerisi (Ne Yesem)"""
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Sadece resim formatında dosya yükleyebilirsiniz.")
+    """Buzdolabı fotoğrafından veya manuel metinden tarif önerisi (Ne Yesem)"""
+    if not file and not manuel_malzemeler:
+        raise HTTPException(status_code=400, detail="Lütfen bir fotoğraf yükleyin veya malzeme listesi girin.")
+        
+    contents = None
+    if file:
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="Sadece resim formatında dosya yükleyebilirsiniz.")
+        contents = await file.read()
     
     try:
-        contents = await file.read()
-        
         # Süreci LangGraph ajanına gönderiyoruz
-        result_state = process_fridge_image(contents, kalan_kalori, kisitlamalar)
+        result_state = process_fridge_image(image_bytes=contents, manual_ingredients=manuel_malzemeler, kalan_kalori=kalan_kalori, kisitlamalar=kisitlamalar)
         
         return {
             "status": "success",
@@ -373,7 +378,7 @@ async def forward_to_ai_agent(
             "recommendations": result_state.get("recipes", {})
         }
     except Exception as e:
-        print(f"Error processing fridge image: {str(e)}")
+        print(f"Error processing recipe request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # =============================================
