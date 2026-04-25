@@ -974,6 +974,7 @@ fun StatisticScreen() {
             }
         }
     }
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
