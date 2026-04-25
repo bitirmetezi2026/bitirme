@@ -846,8 +846,8 @@ fun RecipeCard(recipe: Recipe) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (recipe.imageRes != null) {
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = recipe.imageRes),
+                    coil.compose.AsyncImage(
+                        model = recipe.imageRes,
                         contentDescription = null,
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                         modifier = Modifier.size(60.dp).clip(RoundedCornerShape(12.dp))
