@@ -593,7 +593,7 @@ val staticHealthyRecipes = listOf(
             "Ezilmiş avokadoyu kızarmış ekmeklerin üzerine kalın bir tabaka halinde sürün.",
             "Üzerine dilimlenmiş çeri domates ve çörek otu serpiştirerek servis yapın."
         ),
-        calories = "288 kcal"
+        calories = "288 kcal | Protein: 6g | Karb: 28g | Yağ: 18g"
     ),
     Recipe(
         name = "Izgara Somon ve Kinoa",
@@ -605,7 +605,7 @@ val staticHealthyRecipes = listOf(
             "Somonu ve kuşkonmazları önceden ısıtılmış 200 derece fırında veya ızgarada 12-15 dakika pişirin.",
             "Haşlanmış kinoa yatağında limon dilimleriyle servis yapın."
         ),
-        calories = "350 kcal"
+        calories = "350 kcal | Protein: 32g | Karb: 15g | Yağ: 18g"
     ),
     Recipe(
         name = "Fit Orman Meyveli Yulaf",
@@ -617,7 +617,7 @@ val staticHealthyRecipes = listOf(
             "Kaseye aldığınız yulafın üzerini muz dilimleri ve orman meyveleriyle süsleyin.",
             "İsteğe bağlı olarak 1 çay kaşığı tarçın veya bal gezdirebilirsiniz."
         ),
-        calories = "220 kcal"
+        calories = "220 kcal | Protein: 8g | Karb: 36g | Yağ: 5g"
     ),
     Recipe(
         name = "Fırınlanmış Çıtır Nohut Salata",
@@ -629,7 +629,7 @@ val staticHealthyRecipes = listOf(
             "Üzerine çıtır nohutları ekleyin.",
             "Limon suyu ve çok az zeytinyağı gezdirerek servis yapın."
         ),
-        calories = "210 kcal"
+        calories = "210 kcal | Protein: 12g | Karb: 28g | Yağ: 6g"
     ),
     Recipe(
         name = "Fıstık Ezmeli Muzlu Smoothie",
@@ -640,7 +640,7 @@ val staticHealthyRecipes = listOf(
             "Pürüzsüz ve kremsi bir kıvam alana kadar yüksek devirde çekin.",
             "Soğuk servis yapın."
         ),
-        calories = "310 kcal"
+        calories = "310 kcal | Protein: 14g | Karb: 38g | Yağ: 12g"
     ),
     Recipe(
         name = "Sebzeli Mantarlı Omlet",
@@ -652,7 +652,7 @@ val staticHealthyRecipes = listOf(
             "Yumurtaları bir kasede çırpın, tuz ve baharatları ekleyin.",
             "Çırpılmış yumurtayı tavaya dökün ve kısık ateşte pişirin."
         ),
-        calories = "190 kcal"
+        calories = "190 kcal | Protein: 14g | Karb: 4g | Yağ: 14g"
     )
 )
 
@@ -665,28 +665,16 @@ fun StatisticScreen() {
     
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var capturedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
-    var recipeResult by remember { mutableStateOf<RecipeResponse?>(null) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var triggerApiCall by remember { mutableStateOf(false) }
     var isFabExpanded by remember { mutableStateOf(false) }
 
-    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) { selectedImageUri = uri; capturedImageBitmap = null; triggerApiCall = true }
-    }
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        if (bitmap != null) { capturedImageBitmap = bitmap; selectedImageUri = null; triggerApiCall = true }
-    }
-
-    LaunchedEffect(triggerApiCall) {
-        if (triggerApiCall) {
-            triggerApiCall = false
-            isLoading = true
-            errorMessage = null
-            recipeResult = null
+    val fetchAiRecipe: (Bitmap?, Uri?) -> Unit = { bmp, uri ->
+        isLoading = true
+        errorMessage = null
+        recipeResult = null
+        coroutineScope.launch {
             try {
-                val imagePart = if (capturedImageBitmap != null) ImageUtils.bitmapToMultipart(capturedImageBitmap!!, context)
-                else if (selectedImageUri != null) ImageUtils.uriToMultipart(selectedImageUri!!, context) else null
+                val imagePart = if (bmp != null) ImageUtils.bitmapToMultipart(bmp, context)
+                else if (uri != null) ImageUtils.uriToMultipart(uri, context) else null
                 
                 if (imagePart != null) {
                     val maxCal = PersistenceManager.getTargetCalories()
@@ -701,6 +689,13 @@ fun StatisticScreen() {
             } catch (e: Exception) { errorMessage = e.localizedMessage }
             finally { isLoading = false }
         }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) { selectedImageUri = uri; capturedImageBitmap = null; fetchAiRecipe(null, uri) }
+    }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        if (bitmap != null) { capturedImageBitmap = bitmap; selectedImageUri = null; fetchAiRecipe(bitmap, null) }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(SoftWhite)) {
