@@ -15,7 +15,7 @@ BASE_URL = "https://bitirme-g5gn.onrender.com"
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def generate_ai_recipes(count=5):
-    print(f"🧠 Yapay Zeka (ChatGPT) {count} adet YEPYENİ diyet tarifi üretiyor... Lütfen bekleyin.")
+    print(f"Yapay Zeka (ChatGPT) {count} adet YEPYENI diyet tarifi uretiyor... Lutfen bekleyin.")
     
     prompt = f"""
     Sen uzman bir diyetisyen ve şefsin. Bana daha önce vermediğin, birbirinden farklı ve yaratıcı tam {count} adet sağlıklı, yüksek proteinli veya düşük kalorili diyet yemeği tarifi üret.
@@ -68,10 +68,10 @@ def add_recipes_to_db():
     new_recipes = generate_ai_recipes(count=5)
     
     if not new_recipes:
-        print("❌ Tarif üretilemedi!")
+        print("[HATA] Tarif üretilemedi!")
         return
 
-    print(f"✅ ChatGPT başarıyla {len(new_recipes)} yeni tarif üretti! Şimdi veritabanına ekleniyor...")
+    print(f"[BASARILI] ChatGPT başarıyla {len(new_recipes)} yeni tarif üretti! Şimdi veritabanına ekleniyor...")
     
     success_count = 0
     for r in new_recipes:
@@ -82,10 +82,10 @@ def add_recipes_to_db():
         try:
             response = requests.post(f"{BASE_URL}/recipes/add", json=r)
             if response.status_code == 200:
-                print(f"✅ Veritabanına Eklendi: {r.get('name')}")
+                print(f"[BASARILI] Veritabanına Eklendi: {r.get('name')}")
                 success_count += 1
             else:
-                print(f"❌ Veritabanı Hatası ({r.get('name')}): {response.status_code} - {response.text}")
+                print(f"[HATA] Veritabanı Hatası ({r.get('name')}): {response.status_code} - {response.text}")
         except Exception as e:
             print(f"Bağlantı hatası: {e}")
         time.sleep(1)  # Sunucuyu yormamak için bekleme
@@ -94,6 +94,6 @@ def add_recipes_to_db():
 
 if __name__ == "__main__":
     if not os.getenv("OPENAI_API_KEY"):
-        print("❌ Lütfen .env dosyasına OPENAI_API_KEY ekleyin.")
+        print("[HATA] Lütfen .env dosyasına OPENAI_API_KEY ekleyin.")
     else:
         add_recipes_to_db()
