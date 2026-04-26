@@ -240,6 +240,23 @@ def get_all_recipes(db: Session = Depends(get_db)):
     recipes = db.query(models.RecipeDB).all()
     return recipes
 
+@app.get("/populate-recipes")
+def populate_recipes_endpoint(db: Session = Depends(get_db)):
+    """Render Shell paralı olduğu için tarayıcıdan tetiklenecek doldurma linki"""
+    recipes_data = [
+        {"name": "Fırında Somon", "calories": "350 kcal | Protein: 35g | Yağ: 15g | Karb: 0g", "description": "Omega-3 deposu somon.", "ingredients": "Somon, Limon, Zeytinyağı", "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2020/11/firinda-somon-yemekcom.jpg"},
+        {"name": "Izgara Tavuk Salata", "calories": "280 kcal | Protein: 30g | Yağ: 10g | Karb: 10g", "description": "Sporcu salatası.", "ingredients": "Tavuk, Marul, Domates", "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2016/05/izgara-tavuklu-salata-tarifi.jpg"},
+        {"name": "Yulaf Lapası", "calories": "250 kcal | Protein: 8g | Yağ: 5g | Karb: 40g", "description": "Güne enerjik başlamak için.", "ingredients": "Yulaf, Süt, Muz", "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2021/01/yulaf-lapasi-tarifi.jpg"},
+        {"name": "Kinoa Kısırı", "calories": "200 kcal | Protein: 6g | Yağ: 7g | Karb: 25g", "description": "Glutensiz kısır.", "ingredients": "Kinoa, Salça, Yeşillik", "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2017/02/kinoa-kisiri-tarifi.jpg"}
+    ]
+    existing = db.query(models.RecipeDB).count()
+    if existing == 0:
+        for r in recipes_data:
+            db.add(models.RecipeDB(**r))
+        db.commit()
+        return {"status": "success", "message": f"{len(recipes_data)} tarif basariyla eklendi!"}
+    return {"status": "info", "message": f"Zaten {existing} tarif var, tekrar eklenmedi."}
+
 # =============================================
 # 8. CHATBOT (KAAN'IN RAG SİSTEMİ - DOĞRUDAN)
 # =============================================
