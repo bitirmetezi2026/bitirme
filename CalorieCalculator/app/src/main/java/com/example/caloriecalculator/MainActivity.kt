@@ -738,10 +738,7 @@ fun StatisticScreen() {
 
     Box(modifier = Modifier.fillMaxSize().background(SoftWhite)) {
         LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            item {
-                Text("Ne Yesem?", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color(0xFF222222))
-                Spacer(modifier = Modifier.height(20.dp))
-            }
+            // Ne Yesem? başlığı kaldırıldı. Arama çubuğu en üstte görünecek.
 
             if (isLoading) {
                 item {
@@ -971,31 +968,29 @@ fun StatisticScreen() {
                     Divider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
                     
                     // Input Section
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
                             value = currentIngredient,
                             onValueChange = { currentIngredient = it },
-                            label = { Text("Malzeme (Örn: Tavuk)") },
-                            modifier = Modifier.weight(2f),
+                            label = { Text("Malzeme Girin") },
+                            placeholder = { Text("Örn: Domates, Tavuk Göğsü") },
+                            modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp)
                         )
-                        OutlinedTextField(
-                            value = currentAmount,
-                            onValueChange = { currentAmount = it },
-                            label = { Text("Miktar (Örn: 200g)") },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp)
+                        Text(
+                            text = "💡 İpucu: Lütfen malzemeleri doğru yazdığınızdan emin olun (Örn: 'tavk' yerine 'tavuk').",
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(top = 6.dp, start = 4.dp, bottom = 4.dp)
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = {
                             if (currentIngredient.isNotBlank()) {
-                                ingredientList = ingredientList + IngredientItem(currentIngredient.trim(), currentAmount.trim())
+                                ingredientList = ingredientList + IngredientItem(currentIngredient.trim(), "")
                                 currentIngredient = ""
-                                currentAmount = ""
                             }
                         },
                         modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -1004,7 +999,7 @@ fun StatisticScreen() {
                     ) {
                         Icon(Icons.Filled.Add, null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Sepete Ekle", fontWeight = FontWeight.Bold)
+                        Text("Malzeme Ekle", fontWeight = FontWeight.Bold)
                     }
                     
                     Spacer(modifier = Modifier.height(16.dp))
