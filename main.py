@@ -232,7 +232,16 @@ def read_water_logs(
     return water_logs
 
 # =============================================
-# 7. CHATBOT (KAAN'IN RAG SİSTEMİ - DOĞRUDAN)
+# 7. TARİF LİSTESİ ÇEKME (SUPABASE'DEN)
+# =============================================
+@app.get("/recipes/", response_model=List[schemas.RecipeOut])
+def get_all_recipes(db: Session = Depends(get_db)):
+    """Android'in açılışta tüm tarifleri çekmesi için endpoint"""
+    recipes = db.query(models.RecipeDB).all()
+    return recipes
+
+# =============================================
+# 8. CHATBOT (KAAN'IN RAG SİSTEMİ - DOĞRUDAN)
 # =============================================
 
 @app.post("/chat")

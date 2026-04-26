@@ -117,3 +117,17 @@ class ChatRequest(BaseModel):
     yas: int = 30
     cinsiyet: str = "Belirtilmemiş"
     bugunku_ogunler: List[MealItem] = []
+
+# ========================
+# TARİF (RECIPE) ŞEMALARI
+# ========================
+class RecipeOut(BaseModel):
+    id: int
+    name: str
+    calories: str
+    description: str
+    ingredients: str
+    image_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True

@@ -73,3 +73,15 @@ class WaterLog(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     owner = relationship("User", back_populates="water_logs")
+
+# 5. TARİFLER TABLOSU
+class RecipeDB(Base):
+    __tablename__ = "recipes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    calories = Column(String)  # "280 kcal | Protein: 20g | Yağ: 10g | Karb: 15g"
+    description = Column(String)
+    ingredients = Column(String)  # Virgülle ayrılmış liste
+    image_url = Column(String, nullable=True) # Resim linki
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
