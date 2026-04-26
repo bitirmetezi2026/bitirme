@@ -928,57 +928,60 @@ fun StatisticScreen() {
             }
         }
 
-        // --- Expandable FAB ---
-        Column(
+        // --- Expandable FAB (Radial/Circular) ---
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
                 .padding(bottom = 60.dp), // BottomNav padding
-            horizontalAlignment = Alignment.CenterHorizontally
+            contentAlignment = Alignment.Center
         ) {
-            androidx.compose.animation.AnimatedVisibility(visible = isFabExpanded) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    androidx.compose.material3.SmallFloatingActionButton(
-                        onClick = { 
-                            isFabExpanded = false
-                            isManualInputScreenOpen = true
-                        },
-                        containerColor = Color.White,
-                        contentColor = PrimaryGreen
-                    ) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Manuel Malzeme Gir")
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    androidx.compose.material3.SmallFloatingActionButton(
-                        onClick = { 
-                            isFabExpanded = false
-                            cameraLauncher.launch(null)
-                        },
-                        containerColor = Color.White,
-                        contentColor = PrimaryGreen
-                    ) {
-                        Icon(Icons.Filled.CameraAlt, contentDescription = "Kamera")
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    androidx.compose.material3.SmallFloatingActionButton(
-                        onClick = { 
-                            isFabExpanded = false
-                            galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        },
-                        containerColor = Color.White,
-                        contentColor = PrimaryGreen
-                    ) {
-                        Icon(Icons.Filled.Image, contentDescription = "Galeri")
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
+            val expandProgress by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (isFabExpanded) 1f else 0f,
+                animationSpec = androidx.compose.animation.core.tween(300)
+            )
+
+            if (expandProgress > 0f) {
+                // Manuel (Sol)
+                androidx.compose.material3.SmallFloatingActionButton(
+                    onClick = { isFabExpanded = false; isManualInputScreenOpen = true },
+                    containerColor = Color(0xFFDCFCE7), // Belirgin açık yeşil arka plan
+                    contentColor = PrimaryGreen,
+                    modifier = Modifier
+                        .offset(x = (-80 * expandProgress).dp, y = 0.dp)
+                        .androidx.compose.ui.draw.alpha(expandProgress)
+                ) { Icon(Icons.Filled.Edit, contentDescription = "Manuel Malzeme Gir") }
+
+                // Kamera (Sol Üst Çapraz)
+                androidx.compose.material3.SmallFloatingActionButton(
+                    onClick = { isFabExpanded = false; cameraLauncher.launch(null) },
+                    containerColor = Color(0xFFDCFCE7),
+                    contentColor = PrimaryGreen,
+                    modifier = Modifier
+                        .offset(x = (-60 * expandProgress).dp, y = (-60 * expandProgress).dp)
+                        .androidx.compose.ui.draw.alpha(expandProgress)
+                ) { Icon(Icons.Filled.CameraAlt, contentDescription = "Kamera") }
+
+                // Galeri (Üst)
+                androidx.compose.material3.SmallFloatingActionButton(
+                    onClick = { 
+                        isFabExpanded = false
+                        galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    containerColor = Color(0xFFDCFCE7),
+                    contentColor = PrimaryGreen,
+                    modifier = Modifier
+                        .offset(x = 0.dp, y = (-80 * expandProgress).dp)
+                        .androidx.compose.ui.draw.alpha(expandProgress)
+                ) { Icon(Icons.Filled.Image, contentDescription = "Galeri") }
             }
-            
+
             FloatingActionButton(
                 onClick = { isFabExpanded = !isFabExpanded },
                 containerColor = PrimaryGreen,
                 contentColor = Color.White,
-                shape = CircleShape
+                shape = CircleShape,
+                modifier = Modifier.androidx.compose.ui.draw.rotate(180f * expandProgress)
             ) {
                 Icon(if (isFabExpanded) Icons.Filled.Close else Icons.Filled.AutoAwesome, contentDescription = "Sihirli Şef Asistanı")
             }
