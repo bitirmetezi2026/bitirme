@@ -240,6 +240,16 @@ def get_all_recipes(db: Session = Depends(get_db)):
     recipes = db.query(models.RecipeDB).all()
     return recipes
 
+@app.post("/recipes/add", response_model=schemas.RecipeOut)
+def add_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
+    """Profesyonel/Bot arayüzlerinden yeni tarif eklemek için endpoint"""
+    new_recipe = models.RecipeDB(**recipe.model_dump() if hasattr(recipe, 'model_dump') else recipe.dict())
+    db.add(new_recipe)
+    db.commit()
+    db.refresh(new_recipe)
+    return new_recipe
+
+
 @app.get("/populate-recipes")
 def populate_recipes_endpoint(db: Session = Depends(get_db)):
     """Render Shell paralı olduğu için tarayıcıdan tetiklenecek doldurma linki"""

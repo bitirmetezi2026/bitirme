@@ -121,6 +121,12 @@ class ChatRequest(BaseModel):
 # ========================
 # TARİF (RECIPE) ŞEMALARI
 # ========================
+class RecipeCreate(BaseModel):
+    name: str
+    calories: Optional[str] = "Bilinmiyor"
+    description: Optional[str] = ""
+    ingredients: Optional[str] = ""
+    image_url: Optional[str] = None
 class RecipeOut(BaseModel):
     id: int
     name: str
