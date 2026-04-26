@@ -124,10 +124,11 @@ class ChatRequest(BaseModel):
 class RecipeOut(BaseModel):
     id: int
     name: str
-    calories: str
-    description: str
-    ingredients: str
+    calories: Optional[str] = 'Bilinmiyor'
+    description: Optional[str] = ''
+    ingredients: Optional[str] = ''
     image_url: Optional[str] = None
 
     class Config:
+        orm_mode = True
         from_attributes = True
