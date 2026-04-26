@@ -1091,7 +1091,6 @@ fun StatisticScreen() {
                         Text("Şefe Gönder", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-                }
             }
         }
 
