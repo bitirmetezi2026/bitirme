@@ -35,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -949,7 +951,7 @@ fun StatisticScreen() {
                     contentColor = PrimaryGreen,
                     modifier = Modifier
                         .offset(x = (-80 * expandProgress).dp, y = 0.dp)
-                        .androidx.compose.ui.draw.alpha(expandProgress)
+                        .alpha(expandProgress)
                 ) { Icon(Icons.Filled.Edit, contentDescription = "Manuel Malzeme Gir") }
 
                 // Kamera (Sol Üst Çapraz)
@@ -959,7 +961,7 @@ fun StatisticScreen() {
                     contentColor = PrimaryGreen,
                     modifier = Modifier
                         .offset(x = (-60 * expandProgress).dp, y = (-60 * expandProgress).dp)
-                        .androidx.compose.ui.draw.alpha(expandProgress)
+                        .alpha(expandProgress)
                 ) { Icon(Icons.Filled.CameraAlt, contentDescription = "Kamera") }
 
                 // Galeri (Üst)
@@ -972,7 +974,7 @@ fun StatisticScreen() {
                     contentColor = PrimaryGreen,
                     modifier = Modifier
                         .offset(x = 0.dp, y = (-80 * expandProgress).dp)
-                        .androidx.compose.ui.draw.alpha(expandProgress)
+                        .alpha(expandProgress)
                 ) { Icon(Icons.Filled.Image, contentDescription = "Galeri") }
             }
 
@@ -981,7 +983,7 @@ fun StatisticScreen() {
                 containerColor = PrimaryGreen,
                 contentColor = Color.White,
                 shape = CircleShape,
-                modifier = Modifier.androidx.compose.ui.draw.rotate(180f * expandProgress)
+                modifier = Modifier.rotate(180f * expandProgress)
             ) {
                 Icon(if (isFabExpanded) Icons.Filled.Close else Icons.Filled.AutoAwesome, contentDescription = "Sihirli Şef Asistanı")
             }
