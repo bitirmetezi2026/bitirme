@@ -688,6 +688,7 @@ fun StatisticScreen() {
     
     var selectedTab by remember { mutableStateOf("Tüm Tarifler") }
     var favoriteRecipeNames by remember { mutableStateOf(PersistenceManager.favoriteRecipes) }
+    var recipeToAddToMeal by remember { mutableStateOf<Recipe?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var dbRecipes by remember { mutableStateOf<List<Recipe>>(emptyList()) }
     var isLoadingRecipes by remember { mutableStateOf(true) }
@@ -827,10 +828,7 @@ fun StatisticScreen() {
                                     favoriteRecipeNames = newFavs
                                 },
                                 onAddClick = {
-                                    val currentCals = PersistenceManager.getMealCalorie("snack")
-                                    val calValue = recipe.calories.split(" ").firstOrNull()?.toFloatOrNull() ?: 0f
-                                    PersistenceManager.saveMealCalorie("snack", currentCals + calValue)
-                                    android.widget.Toast.makeText(context, "${recipe.name} Atıştırmalık öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
+                                    recipeToAddToMeal = recipe
                                 }
                             )
                             Spacer(modifier = Modifier.height(16.dp))
@@ -918,10 +916,7 @@ fun StatisticScreen() {
                                 favoriteRecipeNames = newFavs
                             },
                             onAddClick = {
-                                val currentCals = PersistenceManager.getMealCalorie("snack")
-                                val calValue = recipe.calories.split(" ").firstOrNull()?.toFloatOrNull() ?: 0f
-                                PersistenceManager.saveMealCalorie("snack", currentCals + calValue)
-                                android.widget.Toast.makeText(context, "${recipe.name} Atıştırmalık öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
+                                recipeToAddToMeal = recipe
                             }
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -1096,7 +1091,45 @@ fun StatisticScreen() {
                         Text("Şefe Gönder", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                 }
+                }
             }
+        }
+
+        if (recipeToAddToMeal != null) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { recipeToAddToMeal = null },
+                title = { Text("Hangi Öğüne Eklensin?", fontWeight = FontWeight.Bold, color = PrimaryGreen) },
+                text = {
+                    Column {
+                        listOf(
+                            "breakfast" to "Kahvaltı",
+                            "lunch" to "Öğle Yemeği",
+                            "dinner" to "Akşam Yemeği",
+                            "snack" to "Atıştırmalık"
+                        ).forEach { (key, label) ->
+                            Button(
+                                onClick = {
+                                    val currentCals = PersistenceManager.getMealCalorie(key)
+                                    val calValue = recipeToAddToMeal!!.calories.split(" ").firstOrNull()?.toFloatOrNull() ?: 0f
+                                    PersistenceManager.saveMealCalorie(key, currentCals + calValue)
+                                    android.widget.Toast.makeText(context, "${recipeToAddToMeal!!.name} $label öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
+                                    recipeToAddToMeal = null
+                                },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+                            ) {
+                                Text(label, color = Color.White)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { recipeToAddToMeal = null }) {
+                        Text("İptal", color = Color.Gray)
+                    }
+                }
+            )
         }
     }
 }
