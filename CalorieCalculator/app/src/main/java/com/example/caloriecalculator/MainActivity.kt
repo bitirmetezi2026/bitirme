@@ -687,6 +687,27 @@ fun StatisticScreen() {
     var selectedTab by remember { mutableStateOf("Tüm Tarifler") }
     var favoriteRecipeNames by remember { mutableStateOf(PersistenceManager.favoriteRecipes) }
     var searchQuery by remember { mutableStateOf("") }
+    var dbRecipes by remember { mutableStateOf<List<Recipe>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val serverRecipes = RetrofitClient.instance.getRecipes()
+            if (serverRecipes.isNotEmpty()) {
+                dbRecipes = serverRecipes.map { sr ->
+                    Recipe(
+                        name = sr.name,
+                        description = sr.description,
+                        ingredients = sr.ingredients.split(",").map { it.trim() },
+                        steps = listOf("Bu tarifin hazırlanışı yakında eklenecektir."),
+                        calories = sr.calories,
+                        imageUrl = sr.image_url
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     val loadingPhrases = listOf("Malzemeler hazırlanıyor...", "Yapay zeka şefi tabağını inceliyor...", "Kaloriler hesaplanıyor...", "Özel tarifler yazılıyor...")
     var currentPhraseIndex by remember { mutableIntStateOf(0) }
@@ -864,7 +885,8 @@ fun StatisticScreen() {
                     }
                 }
                 
-                val recipesToShow = staticHealthyRecipes.filter { recipe ->
+                val listToFilter = if (dbRecipes.isNotEmpty()) dbRecipes else staticHealthyRecipes
+                val recipesToShow = listToFilter.filter { recipe ->
                     val matchesTab = if (selectedTab == "Favorilerim") favoriteRecipeNames.contains(recipe.name) else true
                     val matchesSearch = recipe.name.contains(searchQuery, ignoreCase = true)
                     matchesTab && matchesSearch
@@ -1076,15 +1098,15 @@ fun RecipeCard(
     Card(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (recipe.imageRes != null) {
+                if (recipe.imageRes != null || recipe.imageUrl != null) {
                     coil.compose.AsyncImage(
-                        model = recipe.imageRes,
+                        model = recipe.imageRes ?: recipe.imageUrl,
                         contentDescription = null,
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                         modifier = Modifier.size(60.dp).clip(RoundedCornerShape(12.dp))
                     )
                 } else {
-                    Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(LightGreenBg), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Restaurant, contentDescription = null, tint = PrimaryGreen) }
+                    Box(modifier = Modifier.size(60.dp).clip(RoundedCornerShape(12.dp)).background(LightGreenBg), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Restaurant, contentDescription = null, tint = PrimaryGreen) }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {

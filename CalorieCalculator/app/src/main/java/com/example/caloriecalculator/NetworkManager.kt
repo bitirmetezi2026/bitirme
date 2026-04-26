@@ -98,7 +98,17 @@ data class Recipe(
     val ingredients: List<String>,
     val steps: List<String>,
     val calories: String,
-    val imageRes: Int? = null
+    val imageRes: Int? = null,
+    val imageUrl: String? = null
+)
+
+data class ServerRecipe(
+    val id: Int,
+    val name: String,
+    val calories: String,
+    val description: String,
+    val ingredients: String,
+    val image_url: String?
 )
 
 // --- API ARAYÜZÜ ---
@@ -143,11 +153,14 @@ interface DiyetApi {
     @Multipart
     @POST("recommend-recipes")
     suspend fun getRecipeRecommendations(
-        @Part file: MultipartBody.Part? = null,
+        @Part file: okhttp3.MultipartBody.Part? = null,
         @Part("manuel_malzemeler") manuelMalzemeler: okhttp3.RequestBody? = null,
         @Query("kalan_kalori") kalanKalori: String? = null,
         @Query("kisitlamalar") kisitlamalar: String? = null
     ): RecipeResponse
+
+    @retrofit2.http.GET("recipes/")
+    suspend fun getRecipes(): List<ServerRecipe>
 }
 
 
