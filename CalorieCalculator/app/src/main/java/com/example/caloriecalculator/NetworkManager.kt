@@ -108,6 +108,7 @@ data class ServerRecipe(
     val calories: String,
     val description: String,
     val ingredients: String,
+    val steps: String?,
     val image_url: String?
 )
 

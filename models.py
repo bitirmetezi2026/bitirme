@@ -83,5 +83,6 @@ class RecipeDB(Base):
     calories = Column(String)  # "280 kcal | Protein: 20g | Yağ: 10g | Karb: 15g"
     description = Column(String)
     ingredients = Column(String)  # Virgülle ayrılmış liste
+    steps = Column(String, nullable=True) # Tarifin hazırlanış adımları
     image_url = Column(String, nullable=True) # Resim linki
     created_at = Column(DateTime(timezone=True), server_default=func.now())

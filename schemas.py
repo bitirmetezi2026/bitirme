@@ -126,13 +126,16 @@ class RecipeCreate(BaseModel):
     calories: Optional[str] = "Bilinmiyor"
     description: Optional[str] = ""
     ingredients: Optional[str] = ""
+    steps: Optional[str] = "Tarifin detaylı yapılışı yakında eklenecektir."
     image_url: Optional[str] = None
+
 class RecipeOut(BaseModel):
     id: int
     name: str
     calories: Optional[str] = 'Bilinmiyor'
     description: Optional[str] = ''
     ingredients: Optional[str] = ''
+    steps: Optional[str] = 'Tarifin detaylı yapılışı yakında eklenecektir.'
     image_url: Optional[str] = None
 
     class Config:

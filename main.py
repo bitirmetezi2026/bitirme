@@ -249,6 +249,13 @@ def add_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
     db.refresh(new_recipe)
     return new_recipe
 
+@app.get("/reset-db")
+def reset_database():
+    """Yeni sütunlar eklendiğinde veritabanını sıfırlamak için geçici endpoint"""
+    from database import engine
+    models.Base.metadata.drop_all(bind=engine)
+    models.Base.metadata.create_all(bind=engine)
+    return {"message": "Veritabanı başarıyla sıfırlandı ve yeni sütunlar (steps vb.) ile tekrar oluşturuldu!"}
 
 @app.get("/populate-recipes")
 def populate_recipes_endpoint(db: Session = Depends(get_db)):

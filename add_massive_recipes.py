@@ -1,100 +1,99 @@
 import requests
+import json
+import os
 import time
+from dotenv import load_dotenv
+from openai import OpenAI
 
-# Kullanıcının Render sunucu adresi
+# Ortam değişkenlerini yükle (OPENAI_API_KEY için)
+load_dotenv()
+
+# Render API Adresin
 BASE_URL = "https://bitirme-g5gn.onrender.com"
 
-# Profesyonel ve geniş kapsamlı Türk mutfağı sağlıklı diyet tarifleri
-RECIPES = [
-    {
-        "name": "Fırınlanmış Zeytinyağlı Enginar",
-        "calories": "180 kcal | Protein: 4g | Yağ: 10g | Karb: 15g",
-        "description": "Karaciğer dostu, hafif ve besleyici bir bahar lezzeti.",
-        "ingredients": "Enginar, Zeytinyağı, Dereotu, Limon, Havuç",
-        "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2014/12/zeytinyagli-enginar-yemekcom.jpg"
-    },
-    {
-        "name": "Mercimek Köftesi",
-        "calories": "220 kcal | Protein: 12g | Yağ: 5g | Karb: 30g",
-        "description": "Bitkisel protein kaynağı, doyurucu ve klasik bir lezzet.",
-        "ingredients": "Kırmızı Mercimek, İnce Bulgur, Salça, Taze Soğan",
-        "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2014/05/mercimek-koftesi-yemekcom.jpg"
-    },
-    {
-        "name": "Izgara Levrek ve Kuşkonmaz",
-        "calories": "320 kcal | Protein: 35g | Yağ: 15g | Karb: 8g",
-        "description": "Yüksek omega-3 ve düşük kalorili lüks bir akşam yemeği.",
-        "ingredients": "Levrek, Kuşkonmaz, Limon, Karabiber, Zeytinyağı",
-        "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2016/09/firin-levrek-tarifi.jpg"
-    },
-    {
-        "name": "Avokadolu Poşe Yumurta",
-        "calories": "250 kcal | Protein: 14g | Yağ: 18g | Karb: 10g",
-        "description": "Sağlıklı yağlarla dolu, şampiyonların kahvaltısı.",
-        "ingredients": "Avokado, Yumurta, Tam Buğday Ekmeği, Pul Biber",
-        "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2020/09/avokadolu-yumurta-yemekcom.jpg"
-    },
-    {
-        "name": "Fırında Sebzeli Tavuk Göğsü",
-        "calories": "290 kcal | Protein: 35g | Yağ: 8g | Karb: 15g",
-        "description": "Spor sonrası kas onarımı için mükemmel ana öğün.",
-        "ingredients": "Tavuk Göğsü, Kabak, Biber, Domates, Kekik",
-        "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2021/04/sebzeli-tavuk-sote-yemekcom.jpg"
-    },
-    {
-        "name": "Glutensiz Karabuğday Salatası",
-        "calories": "210 kcal | Protein: 8g | Yağ: 6g | Karb: 30g",
-        "description": "Lif zengini ve tok tutan ferahlatıcı bir salata.",
-        "ingredients": "Karabuğday (Greçka), Nar, Maydanoz, Ceviz",
-        "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2017/02/karabugday-salatasi-tarifi.jpg"
-    },
-    {
-        "name": "Yoğurtlu Semizotu",
-        "calories": "110 kcal | Protein: 6g | Yağ: 5g | Karb: 8g",
-        "description": "Demir ve kalsiyum deposu serinletici bir meze.",
-        "ingredients": "Semizotu, Süzme Yoğurt, Sarımsak, Zeytinyağı",
-        "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2015/06/yogurtlu-semizotu-salatasi-yemekcom.jpg"
-    },
-    {
-        "name": "Chia Tohumlu Puding",
-        "calories": "190 kcal | Protein: 7g | Yağ: 9g | Karb: 18g",
-        "description": "Şeker ilavesiz tatlı krizlerini kesen pratik tatlı.",
-        "ingredients": "Chia Tohumu, Badem Sütü, Yaban Mersini, Bal",
-        "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2018/11/kakaolu-chia-puding-yemekcom.jpg"
-    },
-    {
-        "name": "Fırın Mücver",
-        "calories": "160 kcal | Protein: 6g | Yağ: 7g | Karb: 15g",
-        "description": "Kızartma sevmeyenlere hafif ve diyet mücver.",
-        "ingredients": "Kabak, Yumurta, Yulaf Unu, Dereotu, Beyaz Peynir",
-        "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2015/05/firin-mucver-tarifi.jpg"
-    },
-    {
-        "name": "Zeytinyağlı Taze Fasulye",
-        "calories": "130 kcal | Protein: 4g | Yağ: 6g | Karb: 12g",
-        "description": "Yaz aylarının vazgeçilmezi klasik anne yemeği.",
-        "ingredients": "Taze Fasulye, Domates, Soğan, Zeytinyağı",
-        "image_url": "https://cdn.yemek.com/mnresize/940/940/uploads/2014/05/zeytinyagli-taze-fasulye-yemekcom.jpg"
-    }
-]
+# OpenAI Client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+def generate_ai_recipes(count=5):
+    print(f"🧠 Yapay Zeka (ChatGPT) {count} adet YEPYENİ diyet tarifi üretiyor... Lütfen bekleyin.")
+    
+    prompt = f"""
+    Sen uzman bir diyetisyen ve şefsin. Bana daha önce vermediğin, birbirinden farklı ve yaratıcı tam {count} adet sağlıklı, yüksek proteinli veya düşük kalorili diyet yemeği tarifi üret.
+    
+    Cevabını sadece aşağıdaki JSON formatında ver, başka hiçbir metin ekleme:
+    [
+        {{
+            "name": "Yemeğin Adı",
+            "calories": "300 kcal | Protein: 30g | Yağ: 10g | Karb: 20g",
+            "description": "Yemek hakkında 1-2 cümlelik çekici açıklama.",
+            "ingredients": "Malzeme 1, Malzeme 2, Malzeme 3",
+            "steps": "1. Adım... 2. Adım... 3. Adım...",
+            "image_keyword": "salmon,food" (İngilizce 2 kelime)
+        }}
+    ]
+    """
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.8,
+            response_format={ "type": "json_object" }
+        )
+        
+        # Eğer json_object formatı direk liste dönmüyorsa diye ufak bir düzeltme:
+        # GPT-4o-mini json_object modunda genellikle {"recipes": [...]} döner.
+    except Exception as e:
+        print(f"OpenAI Hatası: {e}")
+        return []
+
+    # Parse response
+    content = response.choices[0].message.content
+    try:
+        # Eğer liste değilse dict olabilir
+        data = json.loads(content)
+        if isinstance(data, dict):
+            # Sözlük içindeki ilk listeyi bul
+            for key, value in data.items():
+                if isinstance(value, list):
+                    return value
+            return [data] # fallback
+        return data
+    except Exception as e:
+        print(f"JSON Parse Hatası: {e}")
+        return []
 
 def add_recipes_to_db():
-    print(f"Toplam {len(RECIPES)} adet profesyonel tarif veritabanına ekleniyor...")
+    # OpenAI'den yepyeni tarifleri al!
+    new_recipes = generate_ai_recipes(count=5)
+    
+    if not new_recipes:
+        print("❌ Tarif üretilemedi!")
+        return
+
+    print(f"✅ ChatGPT başarıyla {len(new_recipes)} yeni tarif üretti! Şimdi veritabanına ekleniyor...")
     
     success_count = 0
-    for recipe in RECIPES:
+    for r in new_recipes:
+        # Resim linki oluştur (LoremFlickr üzerinden rastgele ama konuya uygun resim)
+        keyword = r.pop("image_keyword", "healthy,food")
+        r["image_url"] = f"https://loremflickr.com/400/300/{keyword.replace(' ', ',')}"
+        
         try:
-            response = requests.post(f"{BASE_URL}/recipes/add", json=recipe)
+            response = requests.post(f"{BASE_URL}/recipes/add", json=r)
             if response.status_code == 200:
-                print(f"✅ Eklendi: {recipe['name']}")
+                print(f"✅ Veritabanına Eklendi: {r.get('name')}")
                 success_count += 1
             else:
-                print(f"❌ Hata ({recipe['name']}): {response.status_code} - {response.text}")
+                print(f"❌ Veritabanı Hatası ({r.get('name')}): {response.status_code} - {response.text}")
         except Exception as e:
             print(f"Bağlantı hatası: {e}")
-        time.sleep(0.5)  # Sunucuyu yormamak için kısa bir bekleme
+        time.sleep(1)  # Sunucuyu yormamak için bekleme
         
-    print(f"\nİşlem tamamlandı! {success_count}/{len(RECIPES)} tarif başarıyla canlı veritabanına aktarıldı.")
+    print(f"\nİşlem tamamlandı! {success_count}/{len(new_recipes)} yepyeni tarif canlı sistemde yayında!")
 
 if __name__ == "__main__":
-    add_recipes_to_db()
+    if not os.getenv("OPENAI_API_KEY"):
+        print("❌ Lütfen .env dosyasına OPENAI_API_KEY ekleyin.")
+    else:
+        add_recipes_to_db()
