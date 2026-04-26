@@ -688,9 +688,11 @@ fun StatisticScreen() {
     var favoriteRecipeNames by remember { mutableStateOf(PersistenceManager.favoriteRecipes) }
     var searchQuery by remember { mutableStateOf("") }
     var dbRecipes by remember { mutableStateOf<List<Recipe>>(emptyList()) }
+    var isLoadingRecipes by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         try {
+            isLoadingRecipes = true
             val serverRecipes = RetrofitClient.instance.getRecipes()
             if (serverRecipes.isNotEmpty()) {
                 dbRecipes = serverRecipes.map { sr ->
@@ -706,6 +708,8 @@ fun StatisticScreen() {
             }
         } catch (e: Exception) {
             e.printStackTrace()
+        } finally {
+            isLoadingRecipes = false
         }
     }
 
@@ -885,14 +889,20 @@ fun StatisticScreen() {
                     }
                 }
                 
-                val listToFilter = if (dbRecipes.isNotEmpty()) dbRecipes else staticHealthyRecipes
+                val listToFilter = if (isLoadingRecipes) emptyList() else (if (dbRecipes.isNotEmpty()) dbRecipes else staticHealthyRecipes)
                 val recipesToShow = listToFilter.filter { recipe ->
                     val matchesTab = if (selectedTab == "Favorilerim") favoriteRecipeNames.contains(recipe.name) else true
                     val matchesSearch = recipe.name.contains(searchQuery, ignoreCase = true)
                     matchesTab && matchesSearch
                 }
 
-                if (recipesToShow.isEmpty() && selectedTab == "Favorilerim") {
+                if (isLoadingRecipes) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = PrimaryGreen)
+                        }
+                    }
+                } else if (recipesToShow.isEmpty() && selectedTab == "Favorilerim") {
                     item { Text("Henüz favori tarifiniz yok.", color = Color.Gray, modifier = Modifier.padding(top = 16.dp)) }
                 } else {
                     items(recipesToShow) { recipe ->
@@ -1151,7 +1161,7 @@ fun RecipeCard(
                 recipe.ingredients.forEach { ing ->
                     Row(modifier = Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.Top) {
                         Text("• ", color = PrimaryGreen, fontWeight = FontWeight.Bold)
-                        Text(ing, fontSize = 14.sp)
+                        Text(ing, fontSize = 14.sp, modifier = Modifier.weight(1f))
                     }
                 }
                 
@@ -1161,7 +1171,7 @@ fun RecipeCard(
                 recipe.steps.forEachIndexed { index, step ->
                     Row(modifier = Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.Top) {
                         Text("${index + 1}. ", color = PrimaryGreen, fontWeight = FontWeight.Bold)
-                        Text(step, fontSize = 14.sp)
+                        Text(step, fontSize = 14.sp, modifier = Modifier.weight(1f))
                     }
                 }
             }
