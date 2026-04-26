@@ -699,8 +699,8 @@ fun StatisticScreen() {
                     Recipe(
                         name = sr.name,
                         description = sr.description,
-                        ingredients = sr.ingredients.split(",").map { it.trim() },
-                        steps = (sr.steps ?: "Hazırlanışı yakında eklenecek.").split(".").map { it.trim() }.filter { it.isNotBlank() },
+                        ingredients = sr.ingredients.split(Regex(",(?![^()]*\\))")).map { it.trim() },
+                        steps = (sr.steps ?: "Hazırlanışı yakında eklenecek.").split(Regex("\\d+\\.\\s*")).map { it.trim() }.filter { it.isNotBlank() },
                         calories = sr.calories,
                         imageUrl = sr.image_url
                     )
