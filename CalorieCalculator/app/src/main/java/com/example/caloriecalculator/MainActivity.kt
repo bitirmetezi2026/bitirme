@@ -791,13 +791,13 @@ fun StatisticScreen() {
                         IconButton(onClick = { recipeResult = null; selectedImageUri = null; capturedImageBitmap = null }) {
                             Icon(Icons.Filled.ArrowBack, contentDescription = "Geri Dön", tint = PrimaryGreen)
                         }
-                        Text("✨ Şefin Önerileri", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = PrimaryGreen, modifier = Modifier.weight(1f))
+                        Text("Şefin Önerileri", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = PrimaryGreen, modifier = Modifier.weight(1f))
                     }
                     Divider(modifier = Modifier.padding(bottom = 8.dp))
                     
                     if (recipeResult?.status == "success") {
                         if (!recipeResult?.detected_ingredients.isNullOrEmpty()) {
-                            Text(stringResource(R.string.detected_ingredients_title), fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth())
+                            Text("Girilen Malzemeler:", fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth())
                             FlowRow(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 recipeResult?.detected_ingredients?.forEach { ingredient ->
                                     Surface(shape = RoundedCornerShape(20.dp), color = LeafGreen.copy(alpha = 0.15f), border = BorderStroke(1.dp, LeafGreen.copy(alpha = 0.3f))) {
@@ -818,8 +818,10 @@ fun StatisticScreen() {
                         item { Text("Malzemelere uygun tarif bulunamadı.", color = TextGray) }
                     } else {
                         items(recipes) { recipe ->
+                            val safeName = java.net.URLEncoder.encode(recipe.name.split(" ").firstOrNull() ?: "food", "UTF-8")
+                            val recipeWithImage = recipe.copy(imageUrl = "https://loremflickr.com/800/600/${safeName},food,recipe")
                             RecipeCard(
-                                recipe = recipe,
+                                recipe = recipeWithImage,
                                 isFavorite = favoriteRecipeNames.contains(recipe.name),
                                 onFavoriteToggle = {
                                     val newFavs = favoriteRecipeNames.toMutableSet()
@@ -947,7 +949,7 @@ fun StatisticScreen() {
                     modifier = Modifier
                         .offset(x = (-80 * expandProgress).dp, y = 0.dp)
                         .alpha(expandProgress)
-                ) { Icon(Icons.Filled.Edit, contentDescription = "Manuel Malzeme Gir") }
+                ) { Icon(Icons.Filled.Edit, contentDescription = "Malzeme Ekle") }
 
                 // Kamera (Sol Üst Çapraz)
                 androidx.compose.material3.SmallFloatingActionButton(
@@ -994,7 +996,7 @@ fun StatisticScreen() {
                     // Header
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         IconButton(onClick = { isManualInputScreenOpen = false }) { Icon(Icons.Filled.Close, contentDescription = "Kapat") }
-                        Text("Manuel Malzeme Ekle", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Text("Malzeme Ekle", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                         Spacer(modifier = Modifier.width(48.dp))
                     }
                     Divider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
@@ -1010,18 +1012,13 @@ fun StatisticScreen() {
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp)
                         )
-                        Text(
-                            text = "💡 İpucu: Lütfen malzemeleri doğru yazdığınızdan emin olun (Örn: 'tavk' yerine 'tavuk').",
-                            fontSize = 12.sp,
-                            color = Color.Gray,
-                            modifier = Modifier.padding(top = 6.dp, start = 4.dp, bottom = 4.dp)
-                        )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = {
                             if (currentIngredient.isNotBlank()) {
-                                ingredientList = ingredientList + IngredientItem(currentIngredient.trim(), "")
+                                val newItems = currentIngredient.split(",").map { it.trim() }.filter { it.isNotBlank() }.map { IngredientItem(it, "") }
+                                ingredientList = ingredientList + newItems
                                 currentIngredient = ""
                             }
                         },
