@@ -263,7 +263,7 @@ fun MainScaffold(onLogout: () -> Unit) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(color = PrimaryGreen, modifier = Modifier.size(72.dp), strokeWidth = 6.dp)
                         Spacer(modifier = Modifier.height(24.dp))
-                        Text("Yapay zeka yemeğinizi inceliyor...", color = PrimaryGreen, fontWeight = FontWeight.Bold, fontSize = 18.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Text("Yapay Zeka Şefi Tabağınızı İnceliyor", color = PrimaryGreen, fontWeight = FontWeight.Bold, fontSize = 18.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
             }
