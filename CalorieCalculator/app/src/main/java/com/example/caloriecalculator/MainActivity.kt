@@ -171,6 +171,29 @@ fun MainScaffold(onLogout: () -> Unit) {
     }
 
         var isCalculateMenuOpen by remember { mutableStateOf(false) }
+        var isAnalysisLoading by remember { mutableStateOf(false) }
+        var analysisResult by remember { mutableStateOf<FoodAnalysisResponse?>(null) }
+        val coroutineScope = rememberCoroutineScope()
+        val galleryLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+        ) { uri ->
+            if (uri != null) {
+                coroutineScope.launch {
+                    isAnalysisLoading = true
+                    isCalculateMenuOpen = false
+                    try {
+                        val imagePart = ImageUtils.uriToMultipart(uri, context)
+                        if (imagePart != null) {
+                            analysisResult = RetrofitClient.instance.analyzeFood(imagePart)
+                        }
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "Hata: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
+                    } finally {
+                        isAnalysisLoading = false
+                    }
+                }
+            }
+        }
     val navController = androidx.navigation.compose.rememberNavController()
     Scaffold(
         bottomBar = { AppBottomBar(navController = navController, onCalculateClick = { isCalculateMenuOpen = !isCalculateMenuOpen }, closeCalculateMenu = { isCalculateMenuOpen = false }) }
@@ -213,7 +236,10 @@ fun MainScaffold(onLogout: () -> Unit) {
 
                         // Galeri
                         androidx.compose.material3.SmallFloatingActionButton(
-                            onClick = { isCalculateMenuOpen = false },
+                            onClick = { 
+                                isCalculateMenuOpen = false
+                                galleryLauncher.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },
                             containerColor = Color(0xFFDCFCE7),
                             contentColor = PrimaryGreen,
                             modifier = Modifier.offset(x = (40 * expandProgress).dp, y = (-80 * expandProgress).dp).alpha(expandProgress)
@@ -228,6 +254,54 @@ fun MainScaffold(onLogout: () -> Unit) {
                         ) { Icon(Icons.Filled.QrCodeScanner, "Barkod") }
                     }
                 }
+            }
+
+            if (isAnalysisLoading) {
+                Box(modifier = Modifier.fillMaxSize().background(SoftWhite).clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = {}
+                ), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = PrimaryGreen, modifier = Modifier.size(72.dp), strokeWidth = 6.dp)
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text("Yapay zeka yemeğinizi inceliyor...", color = PrimaryGreen, fontWeight = FontWeight.Bold, fontSize = 18.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    }
+                }
+            }
+
+            if (analysisResult != null) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { analysisResult = null },
+                    title = { Text(text = "Kalori Tespit Edildi", fontWeight = FontWeight.Bold) },
+                    text = {
+                        Column {
+                            Text("Tespit Edilen: ${analysisResult!!.food_name}", fontWeight = FontWeight.SemiBold)
+                            Text("Porsiyon: ${analysisResult!!.portion}", color = Color.DarkGray)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Kalori: ${analysisResult!!.calories.toInt()} kcal", color = PrimaryGreen, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Hangi öğüne eklemek istersiniz?")
+                        }
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            val meals = listOf("Kahvaltı" to "breakfast", "Öğle" to "lunch", "Akşam" to "dinner", "Atıştırmalık" to "snack")
+                            meals.forEach { (label, key) ->
+                                androidx.compose.material3.TextButton(onClick = {
+                                    val newCal = PersistenceManager.getMealCalorie(key) + analysisResult!!.calories.toFloat()
+                                    PersistenceManager.saveMealCalorie(key, newCal)
+                                    android.widget.Toast.makeText(context, "${analysisResult!!.food_name} $label öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
+                                    analysisResult = null
+                                }, modifier = Modifier.fillMaxWidth()) {
+                                    Text(label, color = PrimaryGreen)
+                                }
+                            }
+                            androidx.compose.material3.TextButton(onClick = { analysisResult = null }, modifier = Modifier.fillMaxWidth()) {
+                                Text("İptal", color = Color.Gray)
+                            }
+                        }
+                    }
+                )
             }
         }
     }
