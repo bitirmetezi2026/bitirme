@@ -62,6 +62,9 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.launch
 
+data class IngredientItem(val name: String, val amount: String)
+
+
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -167,29 +170,78 @@ fun MainScaffold(onLogout: () -> Unit) {
         }
     }
 
+        var isCalculateMenuOpen by remember { mutableStateOf(false) }
     val navController = androidx.navigation.compose.rememberNavController()
     Scaffold(
-        bottomBar = { AppBottomBar(navController = navController) }
+        bottomBar = { AppBottomBar(navController = navController, onCalculateClick = { isCalculateMenuOpen = !isCalculateMenuOpen }) }
     ) { paddingValues ->
-        NavHost(navController = navController, startDestination = Screen.Home.route, Modifier.padding(paddingValues)) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            NavHost(navController = navController, startDestination = Screen.Home.route, Modifier.padding(paddingValues)) {
             composable(Screen.Home.route) { HomeScreen() }
             composable(Screen.Chatbot.route) { ChatbotScreen() }
-            composable(Screen.Calculate.route) { CalculateScreen() }
             composable(Screen.Statistic.route) { StatisticScreen() }
             composable(Screen.Settings.route) { SettingsScreen(navController, onLogout) }
+            }
+
+            val expandProgress by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (isCalculateMenuOpen) 1f else 0f,
+                animationSpec = androidx.compose.animation.core.tween(300)
+            )
+
+            if (expandProgress > 0f) {
+                Box(modifier = Modifier.fillMaxSize().clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null,
+                    onClick = { isCalculateMenuOpen = false }
+                )) {
+                    Box(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 90.dp), contentAlignment = Alignment.Center) {
+                        // Manuel
+                        androidx.compose.material3.SmallFloatingActionButton(
+                            onClick = { isCalculateMenuOpen = false },
+                            containerColor = Color(0xFFDCFCE7),
+                            contentColor = PrimaryGreen,
+                            modifier = Modifier.offset(x = (-100 * expandProgress).dp, y = (-20 * expandProgress).dp).alpha(expandProgress)
+                        ) { Icon(Icons.Filled.Edit, "Manuel") }
+
+                        // Kamera
+                        androidx.compose.material3.SmallFloatingActionButton(
+                            onClick = { isCalculateMenuOpen = false },
+                            containerColor = Color(0xFFDCFCE7),
+                            contentColor = PrimaryGreen,
+                            modifier = Modifier.offset(x = (-40 * expandProgress).dp, y = (-80 * expandProgress).dp).alpha(expandProgress)
+                        ) { Icon(Icons.Filled.CameraAlt, "Kamera") }
+
+                        // Galeri
+                        androidx.compose.material3.SmallFloatingActionButton(
+                            onClick = { isCalculateMenuOpen = false },
+                            containerColor = Color(0xFFDCFCE7),
+                            contentColor = PrimaryGreen,
+                            modifier = Modifier.offset(x = (40 * expandProgress).dp, y = (-80 * expandProgress).dp).alpha(expandProgress)
+                        ) { Icon(Icons.Filled.Image, "Galeri") }
+
+                        // Barkod
+                        androidx.compose.material3.SmallFloatingActionButton(
+                            onClick = { isCalculateMenuOpen = false },
+                            containerColor = Color(0xFFDCFCE7),
+                            contentColor = PrimaryGreen,
+                            modifier = Modifier.offset(x = (100 * expandProgress).dp, y = (-20 * expandProgress).dp).alpha(expandProgress)
+                        ) { Icon(Icons.Filled.QrCodeScanner, "Barkod") }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-fun AppBottomBar(navController: NavController) {
+fun AppBottomBar(navController: NavController, onCalculateClick: () -> Unit) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     NavigationBar(containerColor = Color.White, tonalElevation = 12.dp) {
         val colors = NavigationBarItemDefaults.colors(indicatorColor = LightGreenBg, selectedIconColor = PrimaryGreen, selectedTextColor = PrimaryGreen, unselectedIconColor = TextGray, unselectedTextColor = TextGray)
         NavigationBarItem(icon = { Icon(Icons.Filled.Home, stringResource(R.string.nav_home)) }, label = { Text(stringResource(R.string.nav_home), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Home.route, onClick = { navController.navigate(Screen.Home.route) }, colors = colors)
         NavigationBarItem(icon = { Icon(Icons.AutoMirrored.Filled.Chat, stringResource(R.string.nav_chatbot)) }, label = { Text(stringResource(R.string.nav_chatbot), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Chatbot.route, onClick = { navController.navigate(Screen.Chatbot.route) }, colors = colors)
-        NavigationBarItem(icon = { Icon(Icons.Filled.CameraAlt, stringResource(R.string.nav_calculate)) }, label = { Text(stringResource(R.string.nav_calculate), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Calculate.route, onClick = { navController.navigate(Screen.Calculate.route) }, colors = colors)
+        NavigationBarItem(icon = { Icon(Icons.Filled.CameraAlt, stringResource(R.string.nav_calculate)) }, label = { Text(stringResource(R.string.nav_calculate), fontWeight = FontWeight.Medium) }, selected = false, onClick = { onCalculateClick() }, colors = colors)
         NavigationBarItem(icon = { Icon(Icons.Filled.RestaurantMenu, stringResource(R.string.nav_statistic)) }, label = { Text(stringResource(R.string.nav_statistic), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Statistic.route, onClick = { navController.navigate(Screen.Statistic.route) }, colors = colors)
         NavigationBarItem(icon = { Icon(Icons.Filled.Settings, stringResource(R.string.nav_settings)) }, label = { Text(stringResource(R.string.nav_settings), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Settings.route, onClick = { navController.navigate(Screen.Settings.route) }, colors = colors)
     }
@@ -372,300 +424,6 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
         )
     }
 }
-
-// --- 2. CALCULATE SCREEN ---
-@Composable
-fun CalculateScreen() {
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    var capturedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var isCalculating by remember { mutableStateOf(false) }
-    var apiResult by remember { mutableStateOf<FoodAnalysisResponse?>(null) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    
-    // Yardımcı fonksiyon: String içinden kalori sayısını çekme
-    fun extractCalories(input: String?): Float {
-        if (input == null) return 0f
-        val digits = input.filter { it.isDigit() }.ifEmpty { "0" }
-        return digits.toFloatOrNull() ?: 0f
-    }
-    
-    var breakfastCals by remember { mutableFloatStateOf(PersistenceManager.getMealCalorie("breakfast")) }
-    var lunchCals by remember { mutableFloatStateOf(PersistenceManager.getMealCalorie("lunch")) }
-    var dinnerCals by remember { mutableFloatStateOf(PersistenceManager.getMealCalorie("dinner")) }
-    var snackCals by remember { mutableFloatStateOf(PersistenceManager.getMealCalorie("snack")) }
-    
-    var selectedMeal by remember { mutableStateOf<String?>(null) }
-    var manualAddMeal by remember { mutableStateOf<String?>(null) }
-    var manualCalorieInput by remember { mutableStateOf("") }
-    val mealOptions = listOf(stringResource(R.string.meal_breakfast), stringResource(R.string.meal_lunch), stringResource(R.string.meal_dinner), stringResource(R.string.meal_snack))
-
-    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) { selectedImageUri = uri; capturedImageBitmap = null; apiResult = null; selectedMeal = null }
-    }
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        if (bitmap != null) { capturedImageBitmap = bitmap; selectedImageUri = null; apiResult = null; selectedMeal = null }
-    }
-
-    Column(modifier = Modifier.fillMaxSize().background(SoftWhite).padding(horizontal = 24.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(stringResource(R.string.calculate_title), fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(24.dp))
-        Card(modifier = Modifier.fillMaxWidth().height(260.dp), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                if (capturedImageBitmap != null) Image(bitmap = capturedImageBitmap!!.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                else if (selectedImageUri != null) {
-                    androidx.compose.ui.viewinterop.AndroidView(factory = { ctx -> android.widget.ImageView(ctx).apply { scaleType = android.widget.ImageView.ScaleType.CENTER_CROP; setImageURI(selectedImageUri) } }, modifier = Modifier.fillMaxSize())
-                }
-                else Icon(Icons.Filled.CameraAlt, null, modifier = Modifier.size(60.dp), tint = Color.LightGray)
-            }
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Button(onClick = { cameraLauncher.launch(null) }, colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)) { Text(stringResource(R.string.camera_button)) }
-            Button(onClick = { galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)) { Text(stringResource(R.string.gallery_button)) }
-        }
-        
-        Button(
-            onClick = {
-                isCalculating = true
-                errorMessage = null
-                coroutineScope.launch {
-                    try {
-                        val imagePart = if (capturedImageBitmap != null) ImageUtils.bitmapToMultipart(capturedImageBitmap!!, context)
-                        else if (selectedImageUri != null) ImageUtils.uriToMultipart(selectedImageUri!!, context) else null
-                        
-                        if (imagePart != null) {
-                            apiResult = RetrofitClient.instance.analyzeFood(imagePart)
-                        } else {
-                            errorMessage = "Lütfen bir fotoğraf seçin."
-                        }
-                    } catch (e: Exception) { errorMessage = e.localizedMessage }
-                    finally { isCalculating = false }
-                }
-            },
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(vertical = 12.dp),
-            enabled = (selectedImageUri != null || capturedImageBitmap != null) && !isCalculating,
-            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
-        ) {
-            if (isCalculating) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-            else Text(stringResource(R.string.calculate_action_button), fontWeight = FontWeight.Bold)
-        }
-
-        if (apiResult != null) {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = LeafGreen.copy(alpha = 0.2f))) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Tahmin: " + (apiResult?.food_name ?: ""), fontWeight = FontWeight.Bold)
-                    Text("Porsiyon: " + (apiResult?.portion ?: ""), fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(stringResource(R.string.calories_label) + "${apiResult?.calories} kcal", color = PrimaryGreen, fontWeight = FontWeight.Bold)
-                    Text("Protein: ${apiResult?.macros?.protein}g | Karbonhidrat: ${apiResult?.macros?.carbs}g | Yağ: ${apiResult?.macros?.fat}g", fontSize = 12.sp, color = TextGray)
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(stringResource(R.string.ask_which_meal), fontWeight = FontWeight.SemiBold, color = TextGray)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                mealOptions.forEach { meal ->
-                    val isSelected = selectedMeal == meal
-                    Surface(
-                        modifier = Modifier.clickable { selectedMeal = meal },
-                        shape = RoundedCornerShape(16.dp),
-                        color = if (isSelected) PrimaryGreen else Color.White,
-                        border = BorderStroke(1.dp, PrimaryGreen)
-                    ) {
-                        Text(meal, color = if (isSelected) Color.White else PrimaryGreen, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                    }
-                }
-            }
-
-            if (selectedMeal != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(onClick = {
-                    val currentApiResult = apiResult
-                    val currentMeal = selectedMeal
-                    val mealOpt0 = mealOptions[0]
-                    val mealOpt1 = mealOptions[1]
-                    val mealOpt2 = mealOptions[2]
-                    val mealOpt3 = mealOptions[3]
-                    
-                    if (currentApiResult != null && currentMeal != null) {
-                        val caloriesValue = currentApiResult.calories.toFloat()
-                        val foodName = currentApiResult.food_name
-
-                        coroutineScope.launch {
-                            try {
-                                val token = SessionManager.token ?: ""
-                                if (token.isNotEmpty()) {
-                                    val mealData = MealCreate(
-                                        food_name = "${currentMeal}: ${foodName}", 
-                                        calories = caloriesValue,
-                                        protein = 0f, 
-                                        fat = 0f,
-                                        carbs = 0f
-                                    )
-                                    RetrofitClient.instance.saveMeal(token, mealData)
-                                }
-                            } catch (e: Exception) { }
-                        }
-
-                        when (currentMeal) {
-                            mealOpt0 -> { breakfastCals += caloriesValue; PersistenceManager.saveMealCalorie("breakfast", breakfastCals) }
-                            mealOpt1 -> { lunchCals += caloriesValue; PersistenceManager.saveMealCalorie("lunch", lunchCals) }
-                            mealOpt2 -> { dinnerCals += caloriesValue; PersistenceManager.saveMealCalorie("dinner", dinnerCals) }
-                            mealOpt3 -> { snackCals += caloriesValue; PersistenceManager.saveMealCalorie("snack", snackCals) }
-                        }
-                    }
-
-                    apiResult = null
-                    selectedImageUri = null
-                    capturedImageBitmap = null
-                    selectedMeal = null
-                }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)) {
-                    Text(stringResource(R.string.add_button_meal), fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-        
-    if (errorMessage != null) Text(errorMessage!!, color = Color.Red, modifier = Modifier.padding(top = 10.dp))
-        
-    Spacer(modifier = Modifier.height(32.dp))
-    Text(stringResource(R.string.todays_meals), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF222222), modifier = Modifier.align(Alignment.Start))
-    Spacer(modifier = Modifier.height(16.dp))
-        
-        InteractiveMealCard(stringResource(R.string.meal_breakfast), "${breakfastCals.toInt()} " + stringResource(R.string.kcal_unit)) { manualAddMeal = "breakfast" }
-        InteractiveMealCard(stringResource(R.string.meal_lunch), "${lunchCals.toInt()} " + stringResource(R.string.kcal_unit)) { manualAddMeal = "lunch" }
-        InteractiveMealCard(stringResource(R.string.meal_dinner), "${dinnerCals.toInt()} " + stringResource(R.string.kcal_unit)) { manualAddMeal = "dinner" }
-        InteractiveMealCard(stringResource(R.string.meal_snack), "${snackCals.toInt()} " + stringResource(R.string.kcal_unit)) { manualAddMeal = "snack" }
-        
-        Spacer(modifier = Modifier.height(80.dp))
-        
-        if (manualAddMeal != null) {
-            val manualSuffix = stringResource(R.string.manual_suffix)
-            androidx.compose.material3.AlertDialog(
-                onDismissRequest = { manualAddMeal = null },
-                title = { Text(stringResource(R.string.manual_add_title)) },
-                text = {
-                    androidx.compose.material3.OutlinedTextField(
-                        value = manualCalorieInput,
-                        onValueChange = { manualCalorieInput = it },
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                        label = { Text(stringResource(R.string.manual_add_label)) }
-                    )
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        val addedCals = manualCalorieInput.toFloatOrNull() ?: 0f
-                        if (addedCals > 0) {
-                            val mealNameString = when (manualAddMeal) { "breakfast" -> mealOptions[0]; "lunch" -> mealOptions[1]; "dinner" -> mealOptions[2]; else -> mealOptions[3] }
-                            when (manualAddMeal) {
-                                "breakfast" -> { breakfastCals += addedCals; PersistenceManager.saveMealCalorie("breakfast", breakfastCals) }
-                                "lunch" -> { lunchCals += addedCals; PersistenceManager.saveMealCalorie("lunch", lunchCals) }
-                                "dinner" -> { dinnerCals += addedCals; PersistenceManager.saveMealCalorie("dinner", dinnerCals) }
-                                "snack" -> { snackCals += addedCals; PersistenceManager.saveMealCalorie("snack", snackCals) }
-                            }
-                            coroutineScope.launch {
-                                try {
-                                    val token = SessionManager.token ?: ""
-                                    if (token.isNotEmpty()) { RetrofitClient.instance.saveMeal(token, MealCreate("$mealNameString $manualSuffix", addedCals, 0f, 0f, 0f)) }
-                                } catch(e: Exception) {}
-                            }
-                        }
-                        manualAddMeal = null
-                        manualCalorieInput = ""
-                    }) {
-                        Text(stringResource(R.string.add_button_meal))
-                    }
-                },
-                dismissButton = {
-                    androidx.compose.material3.TextButton(onClick = { manualAddMeal = null; manualCalorieInput = "" }) { Text(stringResource(R.string.cancel)) }
-                }
-            )
-        }
-    }
-}
-
-// --- STATIK TARIF VERI SETI ---
-val staticHealthyRecipes = listOf(
-    Recipe(
-        name = "Avokadolu Tam Buğday Tost",
-        description = "Sağlıklı yağlar ve kompleks karbonhidratlarla dolu, güne enerjik başlamanı sağlayacak harika bir kahvaltı seçeneği.",
-        ingredients = listOf("2 dilim tam buğday ekmeği", "1 adet olgun avokado", "1 yemek kaşığı zeytinyağı", "Limon suyu, tuz, karabiber", "İsteğe bağlı: Çeri domates, çörek otu"),
-        steps = listOf(
-            "Ekmekleri hafifçe kızartın.",
-            "Avokadoyu bir kasede ezin, içine zeytinyağı, birkaç damla limon suyu, tuz ve karabiber ekleyin.",
-            "Ezilmiş avokadoyu kızarmış ekmeklerin üzerine kalın bir tabaka halinde sürün.",
-            "Üzerine dilimlenmiş çeri domates ve çörek otu serpiştirerek servis yapın."
-        ),
-        calories = "288 kcal | Protein: 6g | Karb: 28g | Yağ: 18g",
-        imageRes = R.drawable.avovado
-    ),
-    Recipe(
-        name = "Izgara Somon ve Kinoa",
-        description = "Yüksek Omega-3 ve protein içeren, akşam yemekleri için hafif ama çok doyurucu bir tarif.",
-        ingredients = listOf("150g somon fileto", "3 yemek kaşığı haşlanmış kinoa", "Yarım demet kuşkonmaz", "1 tatlı kaşığı zeytinyağı", "Limon, tuz, karabiber"),
-        steps = listOf(
-            "Somonu zeytinyağı, tuz ve karabiber ile marine edin.",
-            "Kuşkonmazları fırın tepsisine dizip hafifçe yağlayın.",
-            "Somonu ve kuşkonmazları önceden ısıtılmış 200 derece fırında veya ızgarada 12-15 dakika pişirin.",
-            "Haşlanmış kinoa yatağında limon dilimleriyle servis yapın."
-        ),
-        calories = "350 kcal | Protein: 32g | Karb: 15g | Yağ: 18g",
-        imageRes = R.drawable.grilled_salmon
-    ),
-    Recipe(
-        name = "Fit Orman Meyveli Yulaf",
-        description = "Tatlı krizlerini kesen, lif oranı yüksek ve bağırsak dostu fit yulaf lapası.",
-        ingredients = listOf("4 yemek kaşığı yulaf ezmesi", "1 su bardağı badem sütü (veya yarım yağlı süt)", "Yarım muz", "1 avuç yaban mersini veya böğürtlen", "1 tatlı kaşığı chia tohumu"),
-        steps = listOf(
-            "Yulaf ve sütü küçük bir tencereye alın, kısık ateşte lapa kıvamına gelene kadar pişirin.",
-            "İçine chia tohumunu ekleyip karıştırın ve ocaktan alın.",
-            "Kaseye aldığınız yulafın üzerini muz dilimleri ve orman meyveleriyle süsleyin.",
-            "İsteğe bağlı olarak 1 çay kaşığı tarçın veya bal gezdirebilirsiniz."
-        ),
-        calories = "220 kcal | Protein: 8g | Karb: 36g | Yağ: 5g",
-        imageRes = R.drawable.forest_fruit_oats
-    ),
-    Recipe(
-        name = "Fırınlanmış Çıtır Nohut Salata",
-        description = "Bitkisel protein deposu, doyurucu ve çok pratik bir vegan salata.",
-        ingredients = listOf("1 su bardağı haşlanmış nohut", "1 tatlı kaşığı zeytinyağı, toz biber, kimyon", "Yarım demet marul", "Çeri domates, salatalık", "1 yemek kaşığı limon suyu"),
-        steps = listOf(
-            "Nohutları zeytinyağı ve baharatlarla harmanlayıp 200 derece fırında 15 dakika çıtırlaşana kadar pişirin.",
-            "Yeşillikleri doğrayıp geniş bir kaseye alın.",
-            "Üzerine çıtır nohutları ekleyin.",
-            "Limon suyu ve çok az zeytinyağı gezdirerek servis yapın."
-        ),
-        calories = "210 kcal | Protein: 12g | Karb: 28g | Yağ: 6g",
-        imageRes = R.drawable.baked_chickpeas
-    ),
-    Recipe(
-        name = "Fıstık Ezmeli Muzlu Smoothie",
-        description = "Antrenman öncesi veya sonrası için ideal, hızlı enerji veren sıvı öğün.",
-        ingredients = listOf("1 adet donmuş muz", "1 yemek kaşığı şekersiz fıstık ezmesi", "1 su bardağı süt", "1 çay kaşığı tarçın"),
-        steps = listOf(
-            "Tüm malzemeleri blendera ekleyin.",
-            "Pürüzsüz ve kremsi bir kıvam alana kadar yüksek devirde çekin.",
-            "Soğuk servis yapın."
-        ),
-        calories = "310 kcal | Protein: 14g | Karb: 38g | Yağ: 12g"
-    ),
-    Recipe(
-        name = "Sebzeli Mantarlı Omlet",
-        description = "Düşük karbonhidratlı, yüksek proteinli ve çok lezzetli kahvaltı alternatifi.",
-        ingredients = listOf("2 adet yumurta", "3-4 adet kültür mantarı", "1 avuç ıspanak", "1 çay kaşığı tereyağı", "Tuz, karabiber, pulbiber"),
-        steps = listOf(
-            "Mantarları ince ince dilimleyin ve tereyağında hafifçe soteleyin.",
-            "Üzerine ıspanakları ekleyip sönene kadar 1-2 dakika daha soteleyin.",
-            "Yumurtaları bir kasede çırpın, tuz ve baharatları ekleyin.",
-            "Çırpılmış yumurtayı tavaya dökün ve kısık ateşte pişirin."
-        ),
-        calories = "190 kcal | Protein: 14g | Karb: 4g | Yağ: 14g"
-    )
-)
-
-data class IngredientItem(val name: String, val amount: String)
 
 // --- 3. NE YESEM (RECIPE) SCREEN ---
 @OptIn(ExperimentalLayoutApi::class)
@@ -890,8 +648,7 @@ fun StatisticScreen() {
                         }
                     }
                 }
-                
-                val listToFilter = if (isLoadingRecipes) emptyList() else (if (dbRecipes.isNotEmpty()) dbRecipes else staticHealthyRecipes)
+                val listToFilter = if (isLoadingRecipes) emptyList() else dbRecipes
                 val recipesToShow = listToFilter.filter { recipe ->
                     val matchesTab = if (selectedTab == "Favorilerim") favoriteRecipeNames.contains(recipe.name) else true
                     val matchesSearch = recipe.name.contains(searchQuery, ignoreCase = true)
