@@ -173,7 +173,7 @@ fun MainScaffold(onLogout: () -> Unit) {
         var isCalculateMenuOpen by remember { mutableStateOf(false) }
     val navController = androidx.navigation.compose.rememberNavController()
     Scaffold(
-        bottomBar = { AppBottomBar(navController = navController, onCalculateClick = { isCalculateMenuOpen = !isCalculateMenuOpen }) }
+        bottomBar = { AppBottomBar(navController = navController, onCalculateClick = { isCalculateMenuOpen = !isCalculateMenuOpen }, closeCalculateMenu = { isCalculateMenuOpen = false }) }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             NavHost(navController = navController, startDestination = Screen.Home.route, Modifier.padding(paddingValues)) {
@@ -189,7 +189,7 @@ fun MainScaffold(onLogout: () -> Unit) {
             )
 
             if (expandProgress > 0f) {
-                Box(modifier = Modifier.fillMaxSize().clickable(
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f * expandProgress)).clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null,
                     onClick = { isCalculateMenuOpen = false }
@@ -234,16 +234,29 @@ fun MainScaffold(onLogout: () -> Unit) {
 }
 
 @Composable
-fun AppBottomBar(navController: NavController, onCalculateClick: () -> Unit) {
+fun AppBottomBar(navController: NavController, onCalculateClick: () -> Unit, closeCalculateMenu: () -> Unit) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     NavigationBar(containerColor = Color.White, tonalElevation = 12.dp) {
         val colors = NavigationBarItemDefaults.colors(indicatorColor = LightGreenBg, selectedIconColor = PrimaryGreen, selectedTextColor = PrimaryGreen, unselectedIconColor = TextGray, unselectedTextColor = TextGray)
-        NavigationBarItem(icon = { Icon(Icons.Filled.Home, stringResource(R.string.nav_home)) }, label = { Text(stringResource(R.string.nav_home), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Home.route, onClick = { navController.navigate(Screen.Home.route) }, colors = colors)
-        NavigationBarItem(icon = { Icon(Icons.AutoMirrored.Filled.Chat, stringResource(R.string.nav_chatbot)) }, label = { Text(stringResource(R.string.nav_chatbot), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Chatbot.route, onClick = { navController.navigate(Screen.Chatbot.route) }, colors = colors)
-        NavigationBarItem(icon = { Icon(Icons.Filled.CameraAlt, stringResource(R.string.nav_calculate)) }, label = { Text(stringResource(R.string.nav_calculate), fontWeight = FontWeight.Medium) }, selected = false, onClick = { onCalculateClick() }, colors = colors)
-        NavigationBarItem(icon = { Icon(Icons.Filled.RestaurantMenu, stringResource(R.string.nav_statistic)) }, label = { Text(stringResource(R.string.nav_statistic), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Statistic.route, onClick = { navController.navigate(Screen.Statistic.route) }, colors = colors)
-        NavigationBarItem(icon = { Icon(Icons.Filled.Settings, stringResource(R.string.nav_settings)) }, label = { Text(stringResource(R.string.nav_settings), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Settings.route, onClick = { navController.navigate(Screen.Settings.route) }, colors = colors)
+        NavigationBarItem(icon = { Icon(Icons.Filled.Home, stringResource(R.string.nav_home)) }, label = { Text(stringResource(R.string.nav_home), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Home.route, onClick = { closeCalculateMenu(); navController.navigate(Screen.Home.route) }, colors = colors)
+        NavigationBarItem(icon = { Icon(Icons.AutoMirrored.Filled.Chat, stringResource(R.string.nav_chatbot)) }, label = { Text(stringResource(R.string.nav_chatbot), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Chatbot.route, onClick = { closeCalculateMenu(); navController.navigate(Screen.Chatbot.route) }, colors = colors)
+        NavigationBarItem(
+            icon = { 
+                Box(
+                    modifier = Modifier.size(56.dp).clip(CircleShape).background(PrimaryGreen),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.Add, stringResource(R.string.nav_calculate), tint = Color.White, modifier = Modifier.size(32.dp))
+                }
+            }, 
+            label = { }, 
+            selected = false, 
+            onClick = { onCalculateClick() }, 
+            colors = colors
+        )
+        NavigationBarItem(icon = { Icon(Icons.Filled.RestaurantMenu, stringResource(R.string.nav_statistic)) }, label = { Text(stringResource(R.string.nav_statistic), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Statistic.route, onClick = { closeCalculateMenu(); navController.navigate(Screen.Statistic.route) }, colors = colors)
+        NavigationBarItem(icon = { Icon(Icons.Filled.Settings, stringResource(R.string.nav_settings)) }, label = { Text(stringResource(R.string.nav_settings), fontWeight = FontWeight.Medium) }, selected = currentRoute == Screen.Settings.route, onClick = { closeCalculateMenu(); navController.navigate(Screen.Settings.route) }, colors = colors)
     }
 }
 
