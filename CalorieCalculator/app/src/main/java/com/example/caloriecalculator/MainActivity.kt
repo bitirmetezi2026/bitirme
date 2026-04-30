@@ -173,6 +173,7 @@ fun MainScaffold(onLogout: () -> Unit) {
         var isCalculateMenuOpen by remember { mutableStateOf(false) }
         var isAnalysisLoading by remember { mutableStateOf(false) }
         var analysisResult by remember { mutableStateOf<FoodAnalysisResponse?>(null) }
+        var selectedMealKey by remember { mutableStateOf<String?>(null) }
         val coroutineScope = rememberCoroutineScope()
         val galleryLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
@@ -269,39 +270,74 @@ fun MainScaffold(onLogout: () -> Unit) {
             }
 
             if (analysisResult != null) {
-                androidx.compose.material3.AlertDialog(
-                    onDismissRequest = { analysisResult = null },
-                    title = { Text(text = "Kalori Tespit Edildi", fontWeight = FontWeight.Bold) },
-                    text = {
-                        Column {
-                            Text("Tespit Edilen: ${analysisResult!!.food_name}", fontWeight = FontWeight.SemiBold)
-                            Text("Porsiyon: ${analysisResult!!.portion}", color = Color.DarkGray)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Kalori: ${analysisResult!!.calories.toInt()} kcal", color = PrimaryGreen, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("Hangi öğüne eklemek istersiniz?")
+                Box(modifier = Modifier.fillMaxSize().background(Color.White).clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = {}
+                ).padding(24.dp)) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Header
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            IconButton(onClick = { analysisResult = null; selectedMealKey = null }) { Icon(Icons.Filled.Close, contentDescription = "Kapat") }
+                            Text("Kalori Tespit Edildi", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            Spacer(modifier = Modifier.width(48.dp))
                         }
-                    },
-                    confirmButton = {},
-                    dismissButton = {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            val meals = listOf("Kahvaltı" to "breakfast", "Öğle" to "lunch", "Akşam" to "dinner", "Atıştırmalık" to "snack")
-                            meals.forEach { (label, key) ->
-                                androidx.compose.material3.TextButton(onClick = {
-                                    val newCal = PersistenceManager.getMealCalorie(key) + analysisResult!!.calories.toFloat()
-                                    PersistenceManager.saveMealCalorie(key, newCal)
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+                        
+                        // Analysis Details
+                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SoftWhite)) {
+                            Column(modifier = Modifier.padding(20.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(analysisResult!!.food_name, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Porsiyon: ${analysisResult!!.portion}", fontSize = 16.sp, color = Color.DarkGray)
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text("${analysisResult!!.calories.toInt()} kcal", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = PrimaryGreen)
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text("Hangi öğüne eklemek istersiniz?", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Meal Options
+                        val meals = listOf("Kahvaltı" to "breakfast", "Öğle" to "lunch", "Akşam" to "dinner", "Atıştırmalık" to "snack")
+                        meals.forEach { (label, key) ->
+                            val isSelected = selectedMealKey == key
+                            val bgColor = if (isSelected) PrimaryGreen else SoftWhite
+                            val contentColor = if (isSelected) Color.White else PrimaryGreen
+                            
+                            Button(
+                                onClick = { selectedMealKey = key },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).height(56.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = bgColor, contentColor = contentColor)
+                            ) {
+                                Text(label, fontSize = 16.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium)
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.weight(1f))
+                        
+                        // Confirm Button
+                        Button(
+                            onClick = {
+                                if (selectedMealKey != null) {
+                                    val label = meals.find { it.second == selectedMealKey }?.first ?: ""
+                                    val newCal = PersistenceManager.getMealCalorie(selectedMealKey!!) + analysisResult!!.calories.toFloat()
+                                    PersistenceManager.saveMealCalorie(selectedMealKey!!, newCal)
                                     android.widget.Toast.makeText(context, "${analysisResult!!.food_name} $label öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
                                     analysisResult = null
-                                }, modifier = Modifier.fillMaxWidth()) {
-                                    Text(label, color = PrimaryGreen)
+                                    selectedMealKey = null
+                                } else {
+                                    android.widget.Toast.makeText(context, "Lütfen bir öğün seçin.", android.widget.Toast.LENGTH_SHORT).show()
                                 }
-                            }
-                            androidx.compose.material3.TextButton(onClick = { analysisResult = null }, modifier = Modifier.fillMaxWidth()) {
-                                Text("İptal", color = Color.Gray)
-                            }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+                        ) {
+                            Text("Onayla", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
-                )
+                }
             }
         }
     }
