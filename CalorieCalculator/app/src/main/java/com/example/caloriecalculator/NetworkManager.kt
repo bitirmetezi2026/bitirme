@@ -188,6 +188,7 @@ object SessionManager {
 
 object PersistenceManager {
     private lateinit var prefs: android.content.SharedPreferences
+    val dataVersion = androidx.compose.runtime.mutableIntStateOf(0)
 
     fun init(context: android.content.Context) {
         if (!this::prefs.isInitialized) {
@@ -299,7 +300,10 @@ object PersistenceManager {
     }
 
     fun getMealCalorie(mealId: String): Float = prefs.getFloat("meal_${SessionManager.userId}_$mealId", 0f)
-    fun saveMealCalorie(mealId: String, calories: Float) = prefs.edit().putFloat("meal_${SessionManager.userId}_$mealId", calories).apply()
+    fun saveMealCalorie(mealId: String, calories: Float) {
+        prefs.edit().putFloat("meal_${SessionManager.userId}_$mealId", calories).apply()
+        dataVersion.intValue++
+    }
 
     fun getHistory(dayIndex: Int): Float = prefs.getFloat("hist_${SessionManager.userId}_$dayIndex", 0f)
     fun saveHistory(dayIndex: Int, totalCalories: Float) = prefs.edit().putFloat("hist_${SessionManager.userId}_$dayIndex", totalCalories).apply()
@@ -311,6 +315,7 @@ object PersistenceManager {
             .remove("meal_${SessionManager.userId}_dinner")
             .remove("meal_${SessionManager.userId}_snack")
             .apply()
+        dataVersion.intValue++
     }
 
     fun clearUserData() {

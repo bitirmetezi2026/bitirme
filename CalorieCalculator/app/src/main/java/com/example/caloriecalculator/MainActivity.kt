@@ -197,7 +197,7 @@ fun MainScaffold(onLogout: () -> Unit) {
         }
     val navController = androidx.navigation.compose.rememberNavController()
     Scaffold(
-        bottomBar = { AppBottomBar(navController = navController, onCalculateClick = { isCalculateMenuOpen = !isCalculateMenuOpen }, closeCalculateMenu = { isCalculateMenuOpen = false }) }
+        bottomBar = { AppBottomBar(navController = navController, onCalculateClick = { isCalculateMenuOpen = !isCalculateMenuOpen }, closeCalculateMenu = { isCalculateMenuOpen = false; analysisResult = null; selectedMealKey = null }) }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             NavHost(navController = navController, startDestination = Screen.Home.route, Modifier.padding(paddingValues)) {
@@ -272,8 +272,8 @@ fun MainScaffold(onLogout: () -> Unit) {
             if (analysisResult != null) {
                 Box(modifier = Modifier.fillMaxSize().background(Color.White).clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = {}
-                ).padding(top = 48.dp, bottom = 100.dp, start = 24.dp, end = 24.dp)) {
-                    val meals = listOf("Kahvaltı" to "breakfast", "Öğle" to "lunch", "Akşam" to "dinner", "Atıştırmalık" to "snack")
+                ).padding(top = 48.dp, bottom = 120.dp, start = 24.dp, end = 24.dp)) {
+                    val meals = listOf("Kahvaltı" to "breakfast", "Öğle" to "lunch", "Akşam" to "dinner", "Ara Öğün" to "snack")
                     
                     Column(modifier = Modifier.fillMaxSize()) {
                         // Header (Just the Close Button)
@@ -287,7 +287,7 @@ fun MainScaffold(onLogout: () -> Unit) {
                         Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = SoftWhite)) {
                             Column(modifier = Modifier.padding(24.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = analysisResult!!.food_name, 
+                                    text = analysisResult!!.food_name.split(" ").joinToString(" ") { it.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(java.util.Locale.getDefault()) else char.toString() } },
                                     fontSize = 26.sp, 
                                     fontWeight = FontWeight.Bold, 
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -1117,7 +1117,7 @@ fun HomeScreen() {
                     var displayTitle by remember { mutableStateOf(todayTitle) }
                     
                     // Home ekranında günlük toplam gösterilir. Chart'a tıklanınca o gününki gösterilir.
-                    androidx.compose.runtime.LaunchedEffect(Unit) {
+                    androidx.compose.runtime.LaunchedEffect(PersistenceManager.dataVersion.intValue) {
                         displayCalories = PersistenceManager.getMealCalorie("breakfast") + PersistenceManager.getMealCalorie("lunch") + PersistenceManager.getMealCalorie("dinner") + PersistenceManager.getMealCalorie("snack")
                         displayTitle = todayTitle
                     }
