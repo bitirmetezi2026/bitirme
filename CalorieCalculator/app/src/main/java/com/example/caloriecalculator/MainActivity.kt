@@ -1105,6 +1105,73 @@ fun RecipeCard(
 
 // --- 4. HOME SCREEN ---
 @Composable
+fun CalorieDonutChart(consumed: Float, target: Float, title: String) {
+    val progress = if (target > 0) consumed / target else 0f
+    val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = progress.coerceAtMost(1f),
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "progress"
+    )
+    val overProgress = if (target > 0 && consumed > target) (consumed - target) / target else 0f
+    val animatedOverProgress by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = overProgress.coerceAtMost(1f),
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 1000, easing = androidx.compose.animation.core.FastOutSlowInEasing, delayMillis = 500),
+        label = "overProgress"
+    )
+
+    Box(modifier = Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(modifier = Modifier.size(220.dp)) {
+            val strokeWidth = 24.dp.toPx()
+            
+            // Arka Plan (Gri)
+            drawArc(
+                color = Color(0xFFF0F0F0),
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            )
+            
+            // Normal İlerleme (Yeşil)
+            drawArc(
+                color = PrimaryGreen,
+                startAngle = -90f,
+                sweepAngle = 360f * animatedProgress,
+                useCenter = false,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            )
+            
+            // Fazla Kalori (Kırmızı)
+            if (animatedOverProgress > 0f) {
+                drawArc(
+                    color = Color(0xFFFF5252),
+                    startAngle = -90f,
+                    sweepAngle = 360f * animatedOverProgress,
+                    useCenter = false,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                )
+            }
+        }
+        
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, fontSize = 16.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(consumed.toInt().toString(), fontSize = 42.sp, fontWeight = FontWeight.ExtraBold, color = if (consumed > target) Color(0xFFFF5252) else PrimaryGreen)
+            }
+            Text("/ ${target.toInt()} kcal", fontSize = 16.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            
+            if (consumed > target) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(color = Color(0xFFFFEBEE), shape = RoundedCornerShape(12.dp)) {
+                    Text("${(consumed - target).toInt()} kcal aşıldı", fontSize = 12.sp, color = Color(0xFFD32F2F), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun HomeScreen() {
     LazyColumn(modifier = Modifier.fillMaxSize().background(SoftWhite).padding(horizontal = 16.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)) {
         item { Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Image(painter = painterResource(id = R.drawable.app_logo), contentDescription = "Profile", modifier = Modifier.size(54.dp).clip(CircleShape)); Spacer(modifier = Modifier.width(12.dp)); Column(modifier = Modifier.weight(1f)) { Text("Merhaba", fontSize = 14.sp, color = TextGray); Text(SessionManager.userName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen) }; Icon(Icons.Filled.Notifications, contentDescription = null, tint = PrimaryGreen) } }
@@ -1122,13 +1189,11 @@ fun HomeScreen() {
                         displayTitle = todayTitle
                     }
                     
-                    Text(displayTitle, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text("${displayCalories.toInt()}", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen)
-                        Text(" " + stringResource(R.string.kcal_unit), fontSize = 16.sp, color = TextGray, modifier = Modifier.padding(bottom = 4.dp))
-                        Spacer(modifier = Modifier.weight(1f))
-                        Text(stringResource(R.string.target_label, PersistenceManager.getTargetCalories().toInt().toString()), fontSize = 14.sp, color = TextGray)
-                    }
+                    CalorieDonutChart(
+                        consumed = displayCalories,
+                        target = PersistenceManager.getTargetCalories(),
+                        title = displayTitle
+                    )
                     Spacer(modifier = Modifier.height(24.dp))
                     
                     val daySuffix = stringResource(R.string.day_calories_suffix)
