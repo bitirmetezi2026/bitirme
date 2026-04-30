@@ -250,12 +250,17 @@ def add_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
     return new_recipe
 
 @app.get("/reset-db")
-def reset_database():
-    """Yeni sütunlar eklendiğinde veritabanını sıfırlamak için geçici endpoint"""
+def reset_database(secret: str = Query(None)):
+    """⚠️ TEHLİKELİ: Yeni sütunlar eklendiğinde veritabanını sıfırlamak için geçici endpoint.
+    Kullanmak için: /reset-db?secret=DILA_RESET_2025 şeklinde çağırın.
+    UYARI: Bu endpoint tüm kullanıcı ve yemek verilerini siler!
+    """
+    if secret != "DILA_RESET_2025":
+        raise HTTPException(status_code=403, detail="⛔ Bu endpoint'e erişim yetkiniz yok. Gizli anahtar gerekli.")
     from database import engine
     models.Base.metadata.drop_all(bind=engine)
     models.Base.metadata.create_all(bind=engine)
-    return {"message": "Veritabanı başarıyla sıfırlandı ve yeni sütunlar (steps vb.) ile tekrar oluşturuldu!"}
+    return {"message": "⚠️ Veritabanı başarıyla sıfırlandı ve yeni sütunlar ile tekrar oluşturuldu!"}
 
 @app.get("/populate-recipes")
 def populate_recipes_endpoint(db: Session = Depends(get_db)):
