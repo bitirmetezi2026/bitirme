@@ -37,6 +37,14 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -1849,12 +1857,14 @@ fun InteractiveWaterCard(modifier: Modifier = Modifier) {
     
     val goalGlasses = 8
     val progress = (waterGlasses.toFloat() / goalGlasses).coerceIn(0f, 1f)
+    val percentage = (progress * 100).toInt()
     
-    // Bitki simgesi
+    // Bitki simgesi - Büyüme evreleri
     val plantIcon = when {
         waterGlasses == 0 -> "🥀"
-        waterGlasses < 4 -> "🌱"
-        waterGlasses < 8 -> "🌿"
+        waterGlasses in 1..2 -> "🌱"
+        waterGlasses in 3..5 -> "🌿"
+        waterGlasses in 6..7 -> "🪴"
         else -> "🌳"
     }
 
@@ -1869,7 +1879,7 @@ fun InteractiveWaterCard(modifier: Modifier = Modifier) {
             PersistenceManager.setWaterCount(newCount)
             
             isLoading = true
-            coroutineScope.launch {
+            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                 try {
                     val token = SessionManager.token ?: ""
                     if (token.isNotEmpty()) {
@@ -1878,7 +1888,9 @@ fun InteractiveWaterCard(modifier: Modifier = Modifier) {
                 } catch (e: Exception) {
                     // Sessizce hatayı yoksay
                 } finally {
-                    isLoading = false
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        isLoading = false
+                    }
                 }
             }
         },
@@ -1890,7 +1902,7 @@ fun InteractiveWaterCard(modifier: Modifier = Modifier) {
             // Arkaplandaki su dolma animasyonu
             val animatedHeight by androidx.compose.animation.core.animateFloatAsState(
                 targetValue = progress,
-                animationSpec = androidx.compose.animation.core.tween(1000)
+                animationSpec = androidx.compose.animation.core.tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing)
             )
             
             Box(
@@ -1903,15 +1915,60 @@ fun InteractiveWaterCard(modifier: Modifier = Modifier) {
             
             Row(modifier = Modifier.fillMaxSize().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 // Bitki alanı
+                val plantScale by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (waterGlasses > 0) 1f + (progress * 0.4f) else 1f, // Bitki büyüdükçe scale artar (1x'ten 1.4x'e)
+                    animationSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, 
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                    )
+                )
+                
                 Box(
                     modifier = Modifier.size(80.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     if (isGlowing) {
                         // Altın parlama efekti
-                        Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(Color(0xFFFFF59D).copy(alpha = 0.5f)))
+                        var glowTrigger by remember { mutableStateOf(false) }
+                        androidx.compose.runtime.LaunchedEffect(Unit) {
+                            while(true) {
+                                glowTrigger = !glowTrigger
+                                kotlinx.coroutines.delay(1000)
+                            }
+                        }
+                        val glowScale by androidx.compose.animation.core.animateFloatAsState(
+                            targetValue = if (glowTrigger) 1.2f else 0.8f,
+                            animationSpec = androidx.compose.animation.core.tween(1000)
+                        )
+                        Box(modifier = Modifier.size(60.dp).graphicsLayer { scaleX = glowScale; scaleY = glowScale }.clip(CircleShape).background(Color(0xFFFFF59D).copy(alpha = 0.6f)))
                     }
-                    Text(text = plantIcon, fontSize = 48.sp)
+                    
+                    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.plant_animation))
+                    
+                    // Smooth animated progress: her su bardağında 0.0 -> 1.0 arası pürüzsüzce ilerler
+                    val animatedLottieProgress by androidx.compose.animation.core.animateFloatAsState(
+                        targetValue = progress, // progress = (waterGlasses / 8).coerceIn(0f, 1f)
+                        animationSpec = androidx.compose.animation.core.spring(
+                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                        )
+                    )
+                    
+                    if (composition != null) {
+                        LottieAnimation(
+                            composition = composition!!,
+                            progress = { animatedLottieProgress },
+                            modifier = Modifier.size(80.dp)
+                        )
+                    } else {
+                        // Fallback: Lottie yüklenene kadar emoji göster
+                        androidx.compose.animation.Crossfade(
+                            targetState = plantIcon,
+                            animationSpec = androidx.compose.animation.core.tween(800)
+                        ) { icon ->
+                            Text(text = icon, fontSize = 42.sp)
+                        }
+                    }
                 }
                 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -1919,11 +1976,11 @@ fun InteractiveWaterCard(modifier: Modifier = Modifier) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                     Text("Su Tüketimi", color = Color.Gray, fontSize = 14.sp)
                     Spacer(modifier=Modifier.height(4.dp))
-                    Text("$waterGlasses / $goalGlasses Bardak", fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Color(0xFF1976D2)) 
+                    Text("%$percentage", fontWeight = FontWeight.Bold, fontSize = 28.sp, color = Color(0xFF1976D2)) 
                     if (isGlowing) {
                         Text("Hedefe Ulaştın! 💧", fontSize = 12.sp, color = PrimaryGreen, fontWeight = FontWeight.Bold)
                     } else {
-                        Text("Daha fazla su iç!", fontSize = 12.sp, color = TextGray)
+                        Text("${waterGlasses * 250} ml / 2000 ml", fontSize = 12.sp, color = TextGray)
                     }
                 }
                 
