@@ -162,6 +162,7 @@ fun MainScaffold(onLogout: () -> Unit) {
                         val dayOfWeek = cal.get(java.util.Calendar.DAY_OF_WEEK)
                         val chartIndex = if (dayOfWeek == java.util.Calendar.SUNDAY) 6 else dayOfWeek - 2
                         PersistenceManager.saveHistory(chartIndex, totalYesterday)
+                        PersistenceManager.saveHistoryByDate(PersistenceManager.lastSavedDate, totalYesterday)
                     }
                 } catch (e: Exception) {}
             }
@@ -1195,14 +1196,8 @@ fun HomeScreen() {
                         title = displayTitle
                     )
                     Spacer(modifier = Modifier.height(24.dp))
-                    
-                    val daySuffix = stringResource(R.string.day_calories_suffix)
-                    val daysOptions = listOf(
-                        stringResource(R.string.day_mon), stringResource(R.string.day_tue), stringResource(R.string.day_wed),
-                        stringResource(R.string.day_thu), stringResource(R.string.day_fri), stringResource(R.string.day_sat), stringResource(R.string.day_sun)
-                    )
-                    WeeklyBarChart(onBarClick = { index, calories ->
-                        displayTitle = daysOptions[index] + daySuffix
+                    MonthlyBarChartPager(onBarClick = { dayTitle, calories ->
+                        displayTitle = "$dayTitle Kalorisi"
                         displayCalories = calories
                     })
                 }
@@ -1842,27 +1837,63 @@ fun SettingsItem(title: String, subtitle: String? = null, icon: ImageVector, onC
 fun OnboardingPage(navController: NavController, @DrawableRes imageResId: Int, title: String, description: String, nextRoute: String) { Box(modifier = Modifier.fillMaxSize()) { Image(painter = painterResource(id = imageResId), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop); Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(colors = listOf(Color.Transparent, PrimaryGreen.copy(alpha = 0.5f), PrimaryGreen), startY = 600f))); Column(modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp).padding(bottom = 60.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) { Text(text = title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White); Spacer(modifier = Modifier.height(16.dp)); Text(text = description, fontSize = 16.sp, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center); Spacer(modifier = Modifier.height(40.dp)); Button(onClick = { navController.navigate(nextRoute) }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.White)) { Text(text = "NEXT", color = PrimaryGreen, fontWeight = FontWeight.Bold) } } } }
 @Composable
 fun WelcomeScreen(navController: NavController) { Box(modifier = Modifier.fillMaxSize()) { AuthBackground(); Column(modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) { LogoAndTitle(); Spacer(modifier = Modifier.height(100.dp)); Button(onClick = { navController.navigate(Screen.Login.route) }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)) { Text(text = "SIGN IN", color = Color.White) }; Spacer(modifier = Modifier.height(16.dp)); OutlinedButton(onClick = { navController.navigate(Screen.Register.route) }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, PrimaryGreen)) { Text(text = "SIGN UP", color = PrimaryGreen) } } } }
-@Composable
-fun WeeklyBarChart(onBarClick: (Int, Float) -> Unit) {
-    val maxCalorieGoal = 2500f
-    val days = listOf(
-        stringResource(R.string.day_mon), stringResource(R.string.day_tue), stringResource(R.string.day_wed),
-        stringResource(R.string.day_thu), stringResource(R.string.day_fri), stringResource(R.string.day_sat), stringResource(R.string.day_sun)
-    )
-    
-    // Geçmiş istatistikleri çek (0: Pazartesi -> 6: Pazar)
-    val weeklyData = remember { FloatArray(7) { i -> PersistenceManager.getHistory(i) } }
 
-    Row(modifier = Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-        weeklyData.forEachIndexed { index, calories -> 
-            val percentage = (calories / maxCalorieGoal).coerceIn(0f, 1f)
-            val isToday = index == ((java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7)
-            
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onBarClick(index, calories) }) { 
-                Box(modifier = Modifier.width(20.dp).fillMaxHeight(percentage.coerceAtLeast(0.02f)).clip(RoundedCornerShape(6.dp)).background(if (isToday) LeafGreen else LeafGreen.copy(alpha = 0.3f)))
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(days[index], fontSize = 12.sp, color = if (isToday) PrimaryGreen else TextGray, fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal) 
-            } 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun MonthlyBarChartPager(onBarClick: (String, Float) -> Unit) {
+    val cal = java.util.Calendar.getInstance()
+    val maxCalorieGoal = PersistenceManager.getTargetCalories().let { if (it > 0) it else 2500f }
+    val currentMonth = cal.get(java.util.Calendar.MONTH)
+    val currentYear = cal.get(java.util.Calendar.YEAR)
+    val todayDay = cal.get(java.util.Calendar.DAY_OF_MONTH)
+    
+    // Ay içindeki gün sayısını bul
+    cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
+    val daysInMonth = cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+    
+    val monthNames = listOf("Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık")
+    val monthName = monthNames[currentMonth]
+    
+    // Günleri haftalara (7'şerli) böl
+    val weeks = (1..daysInMonth).chunked(7)
+    val initialPage = weeks.indexOfFirst { it.contains(todayDay) }.takeIf { it >= 0 } ?: 0
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = initialPage, pageCount = { weeks.size })
+    
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("$monthName $currentYear", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextGray)
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(weeks.size) { iteration ->
+                    val color = if (pagerState.currentPage == iteration) PrimaryGreen else Color.LightGray
+                    Box(modifier = Modifier.clip(CircleShape).background(color).size(6.dp))
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        androidx.compose.foundation.pager.HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth()) { page ->
+            val weekDays = weeks[page]
+            Row(modifier = Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
+                weekDays.forEach { day ->
+                    val dateStr = String.format(java.util.Locale.getDefault(), "%04d-%02d-%02d", currentYear, currentMonth + 1, day)
+                    val isToday = day == todayDay
+                    
+                    val calories = if (isToday) {
+                        PersistenceManager.getMealCalorie("breakfast") + PersistenceManager.getMealCalorie("lunch") + PersistenceManager.getMealCalorie("dinner") + PersistenceManager.getMealCalorie("snack")
+                    } else {
+                        PersistenceManager.getHistoryByDate(dateStr)
+                    }
+                    val percentage = (calories / maxCalorieGoal).coerceIn(0f, 1f)
+                    
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { 
+                        onBarClick("$day $monthName", calories) 
+                    }) { 
+                        Box(modifier = Modifier.width(20.dp).fillMaxHeight(percentage.coerceAtLeast(0.02f)).clip(RoundedCornerShape(6.dp)).background(if (isToday) LeafGreen else LeafGreen.copy(alpha = 0.3f)))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(day.toString(), fontSize = 12.sp, color = if (isToday) PrimaryGreen else TextGray, fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal) 
+                    }
+                }
+            }
         }
     }
 }

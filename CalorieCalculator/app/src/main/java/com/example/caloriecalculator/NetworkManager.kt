@@ -308,6 +308,9 @@ object PersistenceManager {
     fun getHistory(dayIndex: Int): Float = prefs.getFloat("hist_${SessionManager.userId}_$dayIndex", 0f)
     fun saveHistory(dayIndex: Int, totalCalories: Float) = prefs.edit().putFloat("hist_${SessionManager.userId}_$dayIndex", totalCalories).apply()
     
+    fun getHistoryByDate(dateStr: String): Float = prefs.getFloat("hist_${SessionManager.userId}_$dateStr", 0f)
+    fun saveHistoryByDate(dateStr: String, totalCalories: Float) = prefs.edit().putFloat("hist_${SessionManager.userId}_$dateStr", totalCalories).apply()
+    
     fun resetTodayCalories() {
         prefs.edit()
             .remove("meal_${SessionManager.userId}_breakfast")
