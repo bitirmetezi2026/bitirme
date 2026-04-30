@@ -272,49 +272,59 @@ fun MainScaffold(onLogout: () -> Unit) {
             if (analysisResult != null) {
                 Box(modifier = Modifier.fillMaxSize().background(Color.White).clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = {}
-                ).padding(24.dp)) {
+                ).padding(top = 48.dp, bottom = 100.dp, start = 24.dp, end = 24.dp)) {
+                    val meals = listOf("Kahvaltı" to "breakfast", "Öğle" to "lunch", "Akşam" to "dinner", "Atıştırmalık" to "snack")
+                    
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Header
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                            IconButton(onClick = { analysisResult = null; selectedMealKey = null }) { Icon(Icons.Filled.Close, contentDescription = "Kapat") }
-                            Text("Kalori Tespit Edildi", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                            Spacer(modifier = Modifier.width(48.dp))
-                        }
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
-                        
-                        // Analysis Details
-                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SoftWhite)) {
-                            Column(modifier = Modifier.padding(20.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(analysisResult!!.food_name, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text("Porsiyon: ${analysisResult!!.portion}", fontSize = 16.sp, color = Color.DarkGray)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text("${analysisResult!!.calories.toInt()} kcal", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = PrimaryGreen)
+                        // Header (Just the Close Button)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            IconButton(onClick = { analysisResult = null; selectedMealKey = null }) { 
+                                Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = Color.DarkGray, modifier = Modifier.size(28.dp)) 
                             }
                         }
                         
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text("Hangi öğüne eklemek istersiniz?", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                        // Analysis Details
+                        Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = SoftWhite)) {
+                            Column(modifier = Modifier.padding(24.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = analysisResult!!.food_name, 
+                                    fontSize = 26.sp, 
+                                    fontWeight = FontWeight.Bold, 
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    lineHeight = 32.sp,
+                                    color = Color.Black
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Surface(color = Color.White, shape = RoundedCornerShape(8.dp), modifier = Modifier.padding(bottom = 16.dp)) {
+                                    Text("Porsiyon: ${analysisResult!!.portion}", fontSize = 14.sp, color = Color.DarkGray, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+                                }
+                                Text("${analysisResult!!.calories.toInt()} kcal", fontSize = 36.sp, fontWeight = FontWeight.ExtraBold, color = PrimaryGreen)
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Hangi öğüne eklemek istersiniz?", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         // Meal Options
-                        val meals = listOf("Kahvaltı" to "breakfast", "Öğle" to "lunch", "Akşam" to "dinner", "Atıştırmalık" to "snack")
-                        meals.forEach { (label, key) ->
-                            val isSelected = selectedMealKey == key
-                            val bgColor = if (isSelected) PrimaryGreen else SoftWhite
-                            val contentColor = if (isSelected) Color.White else PrimaryGreen
-                            
-                            Button(
-                                onClick = { selectedMealKey = key },
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).height(56.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = bgColor, contentColor = contentColor)
-                            ) {
-                                Text(label, fontSize = 16.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium)
+                        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                            meals.forEach { (label, key) ->
+                                val isSelected = selectedMealKey == key
+                                val bgColor = if (isSelected) PrimaryGreen else SoftWhite
+                                val contentColor = if (isSelected) Color.White else PrimaryGreen
+                                
+                                Button(
+                                    onClick = { selectedMealKey = key },
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).height(60.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = bgColor, contentColor = contentColor)
+                                ) {
+                                    Text(label, fontSize = 18.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium)
+                                }
                             }
                         }
                         
-                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.height(16.dp))
                         
                         // Confirm Button
                         Button(
@@ -330,11 +340,11 @@ fun MainScaffold(onLogout: () -> Unit) {
                                     android.widget.Toast.makeText(context, "Lütfen bir öğün seçin.", android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().height(60.dp),
+                            shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
                         ) {
-                            Text("Onayla", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Onayla", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }
