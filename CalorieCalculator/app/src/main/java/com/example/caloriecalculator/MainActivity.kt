@@ -1268,7 +1268,7 @@ fun HomeScreen() {
             }
         }
         item { Spacer(modifier = Modifier.height(24.dp)) }
-        item { Row(Modifier.fillMaxWidth()) { InfoCard(title = "Daily Calorie", value = "${PersistenceManager.getTargetCalories().toInt()} kcal", modifier = Modifier.weight(1f)); Spacer(modifier = Modifier.width(16.dp)); InteractiveWaterCard(modifier = Modifier.weight(1f)) } }
+        item { InteractiveWaterCard(modifier = Modifier.fillMaxWidth()) }
         item { Spacer(modifier = Modifier.height(24.dp)) }
     }
 }
@@ -1837,43 +1837,106 @@ fun SignInText(onSignInClick: () -> Unit) { Row { Text(text = stringResource(R.s
 fun InfoCard(title: String, value: String, modifier: Modifier) { Card(modifier = modifier.height(110.dp), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = LightGreenBg), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) { Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) { Text(title, color = TextGray, fontSize = 14.sp); Spacer(modifier=Modifier.height(8.dp)); Text(value, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = PrimaryGreen) } } }
 
 @Composable
-fun InteractiveWaterCard(modifier: Modifier) {
+fun InteractiveWaterCard(modifier: Modifier = Modifier) {
     var waterGlasses by remember { mutableIntStateOf(0) }
     var isLoading by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     
-    Card(modifier = modifier.height(110.dp).clickable {
-        if (isLoading) return@clickable
-        waterGlasses++
-        isLoading = true
-        coroutineScope.launch {
-            try {
-                val token = SessionManager.token ?: ""
-                if (token.isNotEmpty()) {
-                    RetrofitClient.instance.addWater(token, WaterCreate(250)) // Dila'nın istediği 250ml
+    // Su sayısını PersistenceManager'dan al ve dinle
+    androidx.compose.runtime.LaunchedEffect(PersistenceManager.waterVersion.intValue) {
+        waterGlasses = PersistenceManager.getWaterCount()
+    }
+    
+    val goalGlasses = 8
+    val progress = (waterGlasses.toFloat() / goalGlasses).coerceIn(0f, 1f)
+    
+    // Bitki simgesi
+    val plantIcon = when {
+        waterGlasses == 0 -> "🥀"
+        waterGlasses < 4 -> "🌱"
+        waterGlasses < 8 -> "🌿"
+        else -> "🌳"
+    }
+
+    val isGlowing = waterGlasses >= goalGlasses
+    
+    Card(
+        modifier = modifier.height(140.dp).clickable {
+            if (isLoading) return@clickable
+            
+            // Yerel veritabanını anında güncelle
+            val newCount = waterGlasses + 1
+            PersistenceManager.setWaterCount(newCount)
+            
+            isLoading = true
+            coroutineScope.launch {
+                try {
+                    val token = SessionManager.token ?: ""
+                    if (token.isNotEmpty()) {
+                        RetrofitClient.instance.addWater(token, WaterCreate(250))
+                    }
+                } catch (e: Exception) {
+                    // Sessizce hatayı yoksay
+                } finally {
+                    isLoading = false
                 }
-            } catch (e: Exception) {
-                // Hata durumunda bardağı geri alabiliriz ama şimdilik yoksayıyoruz.
-            } finally {
-                isLoading = false
+            }
+        },
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(if (isGlowing) 8.dp else 2.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Arkaplandaki su dolma animasyonu
+            val animatedHeight by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = progress,
+                animationSpec = androidx.compose.animation.core.tween(1000)
+            )
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(animatedHeight)
+                    .align(Alignment.BottomCenter)
+                    .background(Color(0xFFE3F2FD)) // Açık mavi su efekti
+            )
+            
+            Row(modifier = Modifier.fillMaxSize().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                // Bitki alanı
+                Box(
+                    modifier = Modifier.size(80.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isGlowing) {
+                        // Altın parlama efekti
+                        Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(Color(0xFFFFF59D).copy(alpha = 0.5f)))
+                    }
+                    Text(text = plantIcon, fontSize = 48.sp)
+                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                    Text("Su Tüketimi", color = Color.Gray, fontSize = 14.sp)
+                    Spacer(modifier=Modifier.height(4.dp))
+                    Text("$waterGlasses / $goalGlasses Bardak", fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Color(0xFF1976D2)) 
+                    if (isGlowing) {
+                        Text("Hedefe Ulaştın! 💧", fontSize = 12.sp, color = PrimaryGreen, fontWeight = FontWeight.Bold)
+                    } else {
+                        Text("Daha fazla su iç!", fontSize = 12.sp, color = TextGray)
+                    }
+                }
+                
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color(0xFF1976D2), strokeWidth = 2.dp)
+                } else {
+                    Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFF1976D2)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.Add, contentDescription = "Add Water", tint = Color.White, modifier = Modifier.size(24.dp))
+                    }
+                }
             }
         }
-    }, shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = LightGreenBg), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) { 
-        Row(modifier = Modifier.fillMaxSize().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) { 
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) { 
-                Text("Drink Water", color = TextGray, fontSize = 14.sp)
-                Spacer(modifier=Modifier.height(8.dp))
-                Text("$waterGlasses glass", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = PrimaryGreen) 
-            }
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = PrimaryGreen, strokeWidth = 2.dp)
-            } else {
-                Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(PrimaryGreen.copy(alpha=0.2f)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add Water", tint = PrimaryGreen, modifier = Modifier.size(16.dp))
-                }
-            }
-        } 
-    } 
+    }
 }
 @Composable
 fun MealCard(mealType: String, calorieRange: String) { Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) { Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) { Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(LightGreenBg), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Restaurant, contentDescription = null, tint = PrimaryGreen) }; Spacer(modifier = Modifier.width(16.dp)); Column(modifier = Modifier.weight(1f)) { Text(mealType, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF222222)); Text(calorieRange, color = TextGray, fontSize = 14.sp) } } } }

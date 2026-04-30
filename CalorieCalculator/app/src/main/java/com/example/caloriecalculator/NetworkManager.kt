@@ -305,6 +305,13 @@ object PersistenceManager {
         dataVersion.intValue++
     }
 
+    var waterVersion = androidx.compose.runtime.mutableIntStateOf(0)
+    fun getWaterCount(): Int = prefs.getInt("water_${SessionManager.userId}", 0)
+    fun setWaterCount(count: Int) {
+        prefs.edit().putInt("water_${SessionManager.userId}", count).apply()
+        waterVersion.intValue++
+    }
+
     fun getHistory(dayIndex: Int): Float = prefs.getFloat("hist_${SessionManager.userId}_$dayIndex", 0f)
     fun saveHistory(dayIndex: Int, totalCalories: Float) = prefs.edit().putFloat("hist_${SessionManager.userId}_$dayIndex", totalCalories).apply()
     
@@ -317,8 +324,10 @@ object PersistenceManager {
             .remove("meal_${SessionManager.userId}_lunch")
             .remove("meal_${SessionManager.userId}_dinner")
             .remove("meal_${SessionManager.userId}_snack")
+            .remove("water_${SessionManager.userId}")
             .apply()
         dataVersion.intValue++
+        waterVersion.intValue++
     }
 
     fun clearUserData() {
