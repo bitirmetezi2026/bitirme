@@ -172,6 +172,7 @@ fun MainScaffold(onLogout: () -> Unit) {
     }
 
         var isCalculateMenuOpen by remember { mutableStateOf(false) }
+        var isManualEntryOpen by remember { mutableStateOf(false) }
         var isAnalysisLoading by remember { mutableStateOf(false) }
         var analysisResult by remember { mutableStateOf<FoodAnalysisResponse?>(null) }
         var selectedMealKey by remember { mutableStateOf<String?>(null) }
@@ -198,7 +199,7 @@ fun MainScaffold(onLogout: () -> Unit) {
         }
     val navController = androidx.navigation.compose.rememberNavController()
     Scaffold(
-        bottomBar = { AppBottomBar(navController = navController, onCalculateClick = { isCalculateMenuOpen = !isCalculateMenuOpen }, closeCalculateMenu = { isCalculateMenuOpen = false; analysisResult = null; selectedMealKey = null }) }
+        bottomBar = { AppBottomBar(navController = navController, onCalculateClick = { isCalculateMenuOpen = !isCalculateMenuOpen }, closeCalculateMenu = { isCalculateMenuOpen = false; analysisResult = null; selectedMealKey = null; isManualEntryOpen = false }) }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             NavHost(navController = navController, startDestination = Screen.Home.route, Modifier.padding(paddingValues)) {
@@ -222,7 +223,7 @@ fun MainScaffold(onLogout: () -> Unit) {
                     Box(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 90.dp), contentAlignment = Alignment.Center) {
                         // Manuel
                         androidx.compose.material3.SmallFloatingActionButton(
-                            onClick = { isCalculateMenuOpen = false },
+                            onClick = { isCalculateMenuOpen = false; isManualEntryOpen = true },
                             containerColor = Color(0xFFDCFCE7),
                             contentColor = PrimaryGreen,
                             modifier = Modifier.offset(x = (-100 * expandProgress).dp, y = (-20 * expandProgress).dp).alpha(expandProgress)
@@ -346,6 +347,69 @@ fun MainScaffold(onLogout: () -> Unit) {
                             colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
                         ) {
                             Text("Onayla", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            }
+            if (isManualEntryOpen) {
+                var entryType by remember { mutableStateOf(0) } // 0: Yemek İsmi, 1: Malzeme Listesi
+                var textInput by remember { mutableStateOf("") }
+                
+                Box(modifier = Modifier.fillMaxSize().background(Color.White).clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = {}
+                ).padding(top = 48.dp, bottom = 120.dp, start = 24.dp, end = 24.dp)) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Header (Close Button)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            IconButton(onClick = { isManualEntryOpen = false; textInput = "" }) { 
+                                Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = Color.DarkGray, modifier = Modifier.size(28.dp)) 
+                            }
+                        }
+                        
+                        Text("Manuel Kalori Hesapla", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color.Black)
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        // Toggle for entry type
+                        Row(modifier = Modifier.fillMaxWidth().height(55.dp).background(SoftWhite, RoundedCornerShape(25.dp)).padding(4.dp)) {
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(25.dp)).background(if (entryType == 0) PrimaryGreen else Color.Transparent).clickable { entryType = 0; textInput = "" }, contentAlignment = Alignment.Center) {
+                                Text("Yemek İsmi", color = if (entryType == 0) Color.White else TextGray, fontWeight = FontWeight.Bold)
+                            }
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(25.dp)).background(if (entryType == 1) PrimaryGreen else Color.Transparent).clickable { entryType = 1; textInput = "" }, contentAlignment = Alignment.Center) {
+                                Text("Malzeme Listesi", color = if (entryType == 1) Color.White else TextGray, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(32.dp))
+                        
+                        val titleLabel = if (entryType == 0) "Yemek İsmini Girin" else "Malzeme Listesini Girin"
+                        val hintLabel = if (entryType == 0) "Örn: 1 porsiyon iskender kebap" else "Örn: 2 yumurta, 1 dilim peynir, 2 dilim ekmek"
+                        
+                        OutlinedTextField(
+                            value = textInput,
+                            onValueChange = { textInput = it },
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            label = { Text(titleLabel) },
+                            placeholder = { Text(hintLabel) },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryGreen, unfocusedBorderColor = Color.LightGray),
+                            maxLines = if (entryType == 1) 15 else 3,
+                            singleLine = entryType == 0
+                        )
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        Button(
+                            onClick = {
+                                if (textInput.isNotBlank()) {
+                                    android.widget.Toast.makeText(context, "API bağlantısı bekleniyor...", android.widget.Toast.LENGTH_SHORT).show()
+                                } else {
+                                    android.widget.Toast.makeText(context, "Lütfen giriş yapın.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(60.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+                        ) {
+                            Text("Hesapla", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }
