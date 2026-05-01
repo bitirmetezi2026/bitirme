@@ -29,6 +29,7 @@ class User(Base):
     meals = relationship("Meal", back_populates="owner")
     chats = relationship("ChatLog", back_populates="owner")
     water_logs = relationship("WaterLog", back_populates="owner")
+    exercises = relationship("ExerciseLog", back_populates="owner")
 
 # 2. YEMEK TABLOSU
 class Meal(Base):
@@ -74,7 +75,21 @@ class WaterLog(Base):
 
     owner = relationship("User", back_populates="water_logs")
 
-# 5. TARİFLER TABLOSU
+# 5. EGZERSİZ TABLOSU
+class ExerciseLog(Base):
+    __tablename__ = "exercise_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+
+    exercise_type  = Column(String)   # "Koşu", "Bisiklet" vb.
+    minutes        = Column(Integer)
+    calories_burned = Column(Float)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    owner = relationship("User", back_populates="exercises")
+
 class RecipeDB(Base):
     __tablename__ = "recipes"
 

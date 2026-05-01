@@ -253,8 +253,61 @@ def read_water_logs(
     return water_logs
 
 # =============================================
-# 7. TARİF LİSTESİ ÇEKME (SUPABASE'DEN)
+# 7. EGZERSİZ TAKİBİ
 # =============================================
+
+class ExerciseCreate(schemas.BaseModel):
+    exercise_type: str
+    minutes: int
+    calories_burned: float
+
+class ExerciseResponse(schemas.BaseModel):
+    id: int
+    exercise_type: str
+    minutes: int
+    calories_burned: float
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+@app.post("/exercises/", response_model=ExerciseResponse)
+def save_exercise(
+    exercise: ExerciseCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    new_ex = models.ExerciseLog(
+        user_id=current_user.id,
+        exercise_type=exercise.exercise_type,
+        minutes=exercise.minutes,
+        calories_burned=exercise.calories_burned
+    )
+    db.add(new_ex)
+    db.commit()
+    db.refresh(new_ex)
+    return new_ex
+
+@app.get("/exercises/by-date/", response_model=List[ExerciseResponse])
+def get_exercises_by_date(
+    date: str = Query(..., description="Tarih: YYYY-MM-DD"),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from datetime import timedelta
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d")
+        next_day = target_date + timedelta(days=1)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Tarih formatı hatalı. YYYY-MM-DD kullanın.")
+
+    logs = db.query(models.ExerciseLog).filter(
+        models.ExerciseLog.user_id == current_user.id,
+        models.ExerciseLog.created_at >= target_date,
+        models.ExerciseLog.created_at < next_day
+    ).order_by(models.ExerciseLog.created_at.asc()).all()
+    return logs
+
 @app.get("/recipes/", response_model=List[schemas.RecipeOut])
 def get_all_recipes(db: Session = Depends(get_db)):
     """Android'in açılışta tüm tarifleri çekmesi için endpoint"""
