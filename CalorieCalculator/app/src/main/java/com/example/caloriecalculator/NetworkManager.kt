@@ -79,6 +79,20 @@ data class MealResponse(
     val created_at: String?
 )
 
+data class ExerciseCreate(
+    val exercise_type: String,
+    val minutes: Int,
+    val calories_burned: Float
+)
+
+data class ExerciseResponse(
+    val id: Int,
+    val exercise_type: String,
+    val minutes: Int,
+    val calories_burned: Float,
+    val created_at: String?
+)
+
 data class FoodAnalysisResponse(
     val food_name: String,
     val portion: String,
@@ -166,6 +180,18 @@ interface DiyetApi {
         @retrofit2.http.Header("Authorization") token: String,
         @Query("date") date: String
     ): List<MealResponse>
+
+    @POST("exercises/")
+    suspend fun saveExercise(
+        @retrofit2.http.Header("Authorization") token: String,
+        @Body request: ExerciseCreate
+    ): ExerciseResponse
+
+    @retrofit2.http.GET("exercises/by-date/")
+    suspend fun getExercisesByDate(
+        @retrofit2.http.Header("Authorization") token: String,
+        @Query("date") date: String
+    ): List<ExerciseResponse>
 
     @Multipart
     @POST("recommend-recipes")

@@ -1295,7 +1295,7 @@ fun CalorieDonutChart(consumed: Float, target: Float, title: String, burnedCalor
 
         // Ortadaki metin bloğu
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(title, fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            Text("Alınan Kalori", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 consumed.toInt().toString(),
@@ -1304,32 +1304,9 @@ fun CalorieDonutChart(consumed: Float, target: Float, title: String, burnedCalor
             )
             Text("/ ${target.toInt()} kcal", fontSize = 13.sp, color = Color.Gray)
 
-            if (burnedCalories > 0f) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Surface(
-                    color = Color(0xFFFFF3ED),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Filled.LocalFireDepartment,
-                            contentDescription = null,
-                            tint = Color(0xFFFF7043),
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            "Net: ${netCalories.toInt()} kcal",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFBF4800)
-                        )
-                    }
-                }
-            } else if (isOver) {
+            if (!isOver && burnedCalories == 0f) {
+                // net yok, aşım yok — hiçbir şey gösterme
+            } else if (isOver && burnedCalories == 0f) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Surface(color = Color(0xFFFFEBEE), shape = RoundedCornerShape(12.dp)) {
                     Text(
@@ -1342,13 +1319,54 @@ fun CalorieDonutChart(consumed: Float, target: Float, title: String, burnedCalor
             }
         }
     }
+
+    // ── HALKA DIŞI ETİKET SATIRI — egzersiz girilmişse göster ──
+    if (burnedCalories > 0f) {
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Alınan chip (yeşil)
+            Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(20.dp)) {
+                Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF4CAF50)))
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text("Alınan: ${consumed.toInt()} kcal", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                }
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            // Net chip (turuncu)
+            Surface(color = Color(0xFFFFF3ED), shape = RoundedCornerShape(20.dp)) {
+                Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.LocalFireDepartment, contentDescription = null, tint = Color(0xFFFF7043), modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Net: ${(consumed - burnedCalories).toInt().coerceAtLeast(0)} kcal", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFBF4800))
+                }
+            }
+        }
+    }
 }
 
 @Composable
 fun HomeScreen() {
-    var selectedDate by remember { mutableStateOf("") } // YYYY-MM-DD format, boşsa bugün
+    var selectedDate by remember { mutableStateOf("") }
     var exerciseList by remember { mutableStateOf<List<ExerciseEntry>>(emptyList()) }
-    
+    val coroutineScope = rememberCoroutineScope()
+
+    // Bugünün egzersizlerini uygulama açılışında API'den yükle
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        try {
+            val token = SessionManager.token ?: return@LaunchedEffect
+            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+            val loaded = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                RetrofitClient.instance.getExercisesByDate(token, today)
+            }
+            exerciseList = loaded.map { ExerciseEntry(it.exercise_type, it.minutes, it.calories_burned.toInt()) }
+        } catch (_: Exception) {}
+    }
+
     LazyColumn(modifier = Modifier.fillMaxSize().background(SoftWhite).padding(horizontal = 16.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)) {
         item { Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Image(painter = painterResource(id = R.drawable.app_logo), contentDescription = "Profile", modifier = Modifier.size(54.dp).clip(CircleShape)); Spacer(modifier = Modifier.width(12.dp)); Column(modifier = Modifier.weight(1f)) { Text("Merhaba", fontSize = 14.sp, color = TextGray); Text(SessionManager.userName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen) }; Icon(Icons.Filled.Notifications, contentDescription = null, tint = PrimaryGreen) } }
         item { Spacer(modifier = Modifier.height(24.dp)) }
@@ -1359,7 +1377,6 @@ fun HomeScreen() {
                     var displayCalories by remember { mutableFloatStateOf(0f) }
                     var displayTitle by remember { mutableStateOf(todayTitle) }
                     
-                    // Home ekranında günlük toplam gösterilir. Chart'a tıklanınca o gününki gösterilir.
                     androidx.compose.runtime.LaunchedEffect(PersistenceManager.dataVersion.intValue) {
                         displayCalories = PersistenceManager.getMealCalorie("breakfast") + PersistenceManager.getMealCalorie("lunch") + PersistenceManager.getMealCalorie("dinner") + PersistenceManager.getMealCalorie("snack")
                         displayTitle = todayTitle
@@ -1375,7 +1392,7 @@ fun HomeScreen() {
                     MonthlyBarChartPager(onBarClick = { dayTitle, calories, dateStr ->
                         displayTitle = "$dayTitle Kalorisi"
                         displayCalories = calories
-                        selectedDate = dateStr // YYYY-MM-DD formatında gün bilgisi
+                        selectedDate = dateStr
                     })
                 }
             }
@@ -1385,7 +1402,29 @@ fun HomeScreen() {
         item { Spacer(modifier = Modifier.height(16.dp)) }
         item { InteractiveWaterCard(modifier = Modifier.fillMaxWidth()) }
         item { Spacer(modifier = Modifier.height(16.dp)) }
-        item { ExerciseCard(exerciseList = exerciseList, onExerciseAdded = { exerciseList = exerciseList + it }, modifier = Modifier.fillMaxWidth()) }
+        item {
+            ExerciseCard(
+                exerciseList = exerciseList,
+                onExerciseAdded = { entry ->
+                    exerciseList = exerciseList + entry
+                    // API'ye kaydet
+                    coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        try {
+                            val token = SessionManager.token ?: return@launch
+                            RetrofitClient.instance.saveExercise(
+                                token,
+                                ExerciseCreate(
+                                    exercise_type = entry.type,
+                                    minutes = entry.minutes,
+                                    calories_burned = entry.caloriesBurned.toFloat()
+                                )
+                            )
+                        } catch (_: Exception) {}
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
         item { Spacer(modifier = Modifier.height(16.dp)) }
         item { DaySummaryCard(exerciseList = exerciseList) }
         item { Spacer(modifier = Modifier.height(24.dp)) }
@@ -2005,13 +2044,9 @@ fun ExerciseCard(
         "Tırmanma"   to 8.0f
     )
 
-    // Lottie — egzersiz varsa döngüsel oynatılır (aktif), yoksa soluk+durdurulmuş
+    // Lottie — Snap frame: 0f = gevşek kol (spor yok), 1f = sıkılmış kol (spor var)
+    // Döngüsel animasyon YOK — sabit kare gösterimi
     val muscleComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.muscle))
-    val lottieState by animateLottieCompositionAsState(
-        composition = muscleComposition,
-        iterations = LottieConstants.IterateForever,
-        isPlaying = hasExercise
-    )
 
     Card(
         modifier = modifier,
@@ -2027,10 +2062,9 @@ fun ExerciseCard(
                     if (muscleComposition != null) {
                         LottieAnimation(
                             composition = muscleComposition!!,
-                            progress = { if (hasExercise) lottieState else 0f },
-                            modifier = Modifier
-                                .size(60.dp)
-                                .alpha(if (hasExercise) 1f else 0.35f)
+                            // progress=0f → kare 0 (gevşek), progress=1f → kare 84 (sıkılmış)
+                            progress = { if (hasExercise) 1f else 0f },
+                            modifier = Modifier.size(60.dp)
                         )
                     }
                 }
@@ -2080,12 +2114,26 @@ fun ExerciseCard(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 exerciseList.forEachIndexed { idx, entry ->
+                    val sportIcon = when (entry.type) {
+                        "Koşu"      -> Icons.Filled.DirectionsRun
+                        "Yürüyüş"  -> Icons.Filled.DirectionsWalk
+                        "Bisiklet" -> Icons.Filled.DirectionsBike
+                        "Yüzme"    -> Icons.Filled.Pool
+                        "Ağırlık"  -> Icons.Filled.FitnessCenter
+                        "HIIT"     -> Icons.Filled.LocalFireDepartment
+                        "Yoga"     -> Icons.Filled.SelfImprovement
+                        "Pilates"  -> Icons.Filled.SelfImprovement
+                        "Dans"     -> Icons.Filled.MusicNote
+                        "Kayak"    -> Icons.Filled.AcUnit
+                        "Tırmanma" -> Icons.Filled.Terrain
+                        else       -> Icons.Filled.FitnessCenter
+                    }
                     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFFFF3ED)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Filled.DirectionsRun, contentDescription = null, tint = FireOrange, modifier = Modifier.size(18.dp))
+                            Icon(sportIcon, contentDescription = null, tint = FireOrange, modifier = Modifier.size(18.dp))
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -2261,8 +2309,22 @@ fun DaySummaryCard(exerciseList: List<ExerciseEntry>) {
             if (exerciseList.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 exerciseList.forEach { entry ->
+                    val sportIcon = when (entry.type) {
+                        "Koşu"      -> Icons.Filled.DirectionsRun
+                        "Yürüyüş"  -> Icons.Filled.DirectionsWalk
+                        "Bisiklet" -> Icons.Filled.DirectionsBike
+                        "Yüzme"    -> Icons.Filled.Pool
+                        "Ağırlık"  -> Icons.Filled.FitnessCenter
+                        "HIIT"     -> Icons.Filled.LocalFireDepartment
+                        "Yoga"     -> Icons.Filled.SelfImprovement
+                        "Pilates"  -> Icons.Filled.SelfImprovement
+                        "Dans"     -> Icons.Filled.MusicNote
+                        "Kayak"    -> Icons.Filled.AcUnit
+                        "Tırmanma" -> Icons.Filled.Terrain
+                        else       -> Icons.Filled.FitnessCenter
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
-                        Icon(Icons.Filled.DirectionsRun, contentDescription = null, tint = FireOrange, modifier = Modifier.size(18.dp))
+                        Icon(sportIcon, contentDescription = null, tint = FireOrange, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(entry.type, fontSize = 14.sp, color = Color(0xFFCCCCCC), modifier = Modifier.weight(1f))
                         Text("${entry.minutes} dk · ${entry.caloriesBurned} kcal", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
