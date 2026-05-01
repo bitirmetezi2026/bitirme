@@ -43,6 +43,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import androidx.compose.ui.text.input.KeyboardType
@@ -1291,6 +1292,7 @@ fun CalorieDonutChart(consumed: Float, target: Float, title: String) {
 @Composable
 fun HomeScreen() {
     var selectedDate by remember { mutableStateOf("") } // YYYY-MM-DD format, boşsa bugün
+    var exerciseList by remember { mutableStateOf<List<ExerciseEntry>>(emptyList()) }
     
     LazyColumn(modifier = Modifier.fillMaxSize().background(SoftWhite).padding(horizontal = 16.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)) {
         item { Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Image(painter = painterResource(id = R.drawable.app_logo), contentDescription = "Profile", modifier = Modifier.size(54.dp).clip(CircleShape)); Spacer(modifier = Modifier.width(12.dp)); Column(modifier = Modifier.weight(1f)) { Text("Merhaba", fontSize = 14.sp, color = TextGray); Text(SessionManager.userName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen) }; Icon(Icons.Filled.Notifications, contentDescription = null, tint = PrimaryGreen) } }
@@ -1327,7 +1329,9 @@ fun HomeScreen() {
         item { Spacer(modifier = Modifier.height(16.dp)) }
         item { InteractiveWaterCard(modifier = Modifier.fillMaxWidth()) }
         item { Spacer(modifier = Modifier.height(16.dp)) }
-        item { ExerciseCard(modifier = Modifier.fillMaxWidth()) }
+        item { ExerciseCard(exerciseList = exerciseList, onExerciseAdded = { exerciseList = exerciseList + it }, modifier = Modifier.fillMaxWidth()) }
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+        item { DaySummaryCard(exerciseList = exerciseList) }
         item { Spacer(modifier = Modifier.height(24.dp)) }
     }
 }
@@ -1905,57 +1909,52 @@ fun InfoCard(title: String, value: String, modifier: Modifier) { Card(modifier =
 // ========================================================
 data class ExerciseEntry(val type: String, val minutes: Int, val caloriesBurned: Int)
 
+// Ateş rengi (sarımtrak-alev)
+private val FireOrange = Color(0xFFFF7043)
+private val FireAmber  = Color(0xFFFFA726)
+
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-fun ExerciseCard(modifier: Modifier = Modifier) {
+fun ExerciseCard(
+    exerciseList: List<ExerciseEntry>,
+    onExerciseAdded: (ExerciseEntry) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-
-    // Egzersiz kayıtları (gün içinde birden fazla olabilir)
-    var exerciseList by remember { mutableStateOf<List<ExerciseEntry>>(emptyList()) }
     var showDialog by remember { mutableStateOf(false) }
-
-    // Dialog içi state'ler
     var selectedSport by remember { mutableStateOf("") }
     var durationText by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
-    // Toplam yakılan kalori
     val totalBurned = exerciseList.sumOf { it.caloriesBurned }
     val hasExercise = exerciseList.isNotEmpty()
-
-    // Kullanıcı kilosu (hesaplama için)
     val weightKg = PersistenceManager.kiloKg.let { if (it > 0) it else 70f }
 
-    // MET değerleri tablosu (Ainsworth 2011 Compendium)
+    // MET tablosu (Ainsworth 2011 Compendium) — emoji yok, sadece isim
     val sportMetMap = linkedMapOf(
-        "🏃 Koşu"            to 9.8f,
-        "🚶 Yürüyüş"         to 3.5f,
-        "🚴 Bisiklet"        to 7.5f,
-        "🏊 Yüzme"           to 7.0f,
-        "⚽ Futbol"          to 7.0f,
-        "🏀 Basketbol"       to 6.5f,
-        "🎾 Tenis"           to 7.3f,
-        "🏋️ Ağırlık"        to 5.0f,
-        "🔥 HIIT"            to 10.3f,
-        "🧘 Yoga"            to 2.8f,
-        "🤸 Pilates"         to 3.5f,
-        "💃 Dans"            to 5.0f,
-        "🥊 Boks"            to 9.0f,
-        "⛷️ Kayak"           to 6.8f,
-        "🏄 Sörf"            to 3.0f,
-        "🧗 Tırmanma"        to 8.0f
+        "Koşu"       to 9.8f,
+        "Yürüyüş"    to 3.5f,
+        "Bisiklet"   to 7.5f,
+        "Yüzme"      to 7.0f,
+        "Futbol"     to 7.0f,
+        "Basketbol"  to 6.5f,
+        "Tenis"      to 7.3f,
+        "Ağırlık"    to 5.0f,
+        "HIIT"       to 10.3f,
+        "Yoga"       to 2.8f,
+        "Pilates"    to 3.5f,
+        "Dans"       to 5.0f,
+        "Boks"       to 9.0f,
+        "Kayak"      to 6.8f,
+        "Tırmanma"   to 8.0f
     )
 
-    // Lottie animasyonu: kol — spor girilmemişse başlangıç, girilmişse full progress
+    // Lottie — egzersiz varsa döngüsel oynatılır (aktif), yoksa soluk+durdurulmuş
     val muscleComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.muscle))
-    val muscleTarget = if (hasExercise) 1f else 0f
-    val muscleProgress by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = muscleTarget,
-        animationSpec = androidx.compose.animation.core.spring(
-            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
-        )
+    val lottieState by animateLottieCompositionAsState(
+        composition = muscleComposition,
+        iterations = LottieConstants.IterateForever,
+        isPlaying = hasExercise
     )
 
     Card(
@@ -1966,38 +1965,37 @@ fun ExerciseCard(modifier: Modifier = Modifier) {
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
 
-            // ── HEADER ──
+            // ── BAŞLIK SATIRI ──
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Lottie kol animasyonu
-                Box(
-                    modifier = Modifier.size(64.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.size(60.dp), contentAlignment = Alignment.Center) {
                     if (muscleComposition != null) {
                         LottieAnimation(
                             composition = muscleComposition!!,
-                            progress = { muscleProgress },
-                            modifier = Modifier.size(64.dp)
+                            progress = { if (hasExercise) lottieState else 0f },
+                            modifier = Modifier
+                                .size(60.dp)
+                                .alpha(if (hasExercise) 1f else 0.35f)
                         )
-                    } else {
-                        Text("💪", fontSize = 36.sp)
                     }
                 }
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Egzersiz Takibi", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = Color(0xFF1A1A1A))
+                    Text("Egzersiz Takibi", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Color(0xFF1A1A1A))
                     Text(
-                        if (hasExercise) "$totalBurned kcal yakıldı 🔥" else "Bugün egzersiz girilmedi",
+                        if (hasExercise) "$totalBurned kcal yakıldı" else "Bugün egzersiz girilmedi",
                         fontSize = 13.sp,
-                        color = if (hasExercise) Color(0xFFFF6B35) else TextGray,
-                        fontWeight = if (hasExercise) FontWeight.Bold else FontWeight.Normal
+                        color = if (hasExercise) FireOrange else TextGray,
+                        fontWeight = if (hasExercise) FontWeight.SemiBold else FontWeight.Normal
                     )
                 }
-                // Ekle butonu
+                // Ekle butonu — ateş rengi
                 Button(
                     onClick = { showDialog = true },
                     shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = FireOrange,
+                        contentColor = Color.White
+                    ),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -2012,49 +2010,42 @@ fun ExerciseCard(modifier: Modifier = Modifier) {
                 Divider(color = Color(0xFFF0F0F0))
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Toplam özet chip'i
+                // Toplam özet
                 Surface(
                     color = Color(0xFFFFF3ED),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("🔥 Toplam yakılan:", color = Color(0xFFBF4800), fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        Text("$totalBurned kcal", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = Color(0xFFFF6B35))
+                    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Toplam yakılan", color = Color(0xFFBF4800), fontSize = 13.sp, modifier = Modifier.weight(1f))
+                        Text("$totalBurned kcal", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = FireOrange)
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
 
                 exerciseList.forEachIndexed { idx, entry ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFFFF3ED)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(entry.type.split(" ").first(), fontSize = 16.sp)
+                            Icon(Icons.Filled.DirectionsRun, contentDescription = null, tint = FireOrange, modifier = Modifier.size(18.dp))
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(entry.type.substringAfter(" "), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF333333))
-                            Text("${entry.minutes} dakika", fontSize = 12.sp, color = TextGray)
+                            Text(entry.type, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF2C2C2C))
+                            Text("${entry.minutes} dk", fontSize = 12.sp, color = TextGray)
                         }
-                        Text("−${entry.caloriesBurned} kcal", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF6B35))
+                        Text("−${entry.caloriesBurned} kcal", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = FireOrange)
                     }
                     if (idx < exerciseList.lastIndex) Divider(color = Color(0xFFF8F8F8))
                 }
             } else {
-                // Boş durum — teşvik mesajı
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    "Bugün henüz egzersiz kaydı yok. Harekete geç, kalorileri yak! 💪",
+                    "Bugün henüz egzersiz kaydı yok.",
                     fontSize = 13.sp, color = TextGray,
-                    modifier = Modifier.padding(horizontal = 4.dp)
+                    modifier = Modifier.padding(horizontal = 2.dp)
                 )
             }
         }
@@ -2063,59 +2054,35 @@ fun ExerciseCard(modifier: Modifier = Modifier) {
     // ── EGZERSİZ EKLEME DİALOĞU ──
     if (showDialog) {
         androidx.compose.material3.AlertDialog(
-            onDismissRequest = {
-                showDialog = false
-                selectedSport = ""
-                durationText = ""
-                expanded = false
-            },
+            onDismissRequest = { showDialog = false; selectedSport = ""; durationText = ""; expanded = false },
             containerColor = Color.White,
             shape = RoundedCornerShape(24.dp),
             title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("💪", fontSize = 24.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Egzersiz Ekle", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF1A1A1A))
-                }
+                Text("Egzersiz Ekle", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF1A1A1A))
             },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("Spor Türü", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                    Text("Spor Türü", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextGray)
                     Spacer(modifier = Modifier.height(6.dp))
-
-                    // Sport dropdown
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = !expanded }
-                    ) {
+                    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                         OutlinedTextField(
                             value = selectedSport,
                             onValueChange = {},
                             readOnly = true,
-                            placeholder = { Text("Spor seçin...", color = TextGray) },
+                            placeholder = { Text("Seçin...", color = TextGray) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                             modifier = Modifier.menuAnchor().fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = PrimaryGreen,
-                                unfocusedBorderColor = Color(0xFFE0E0E0)
-                            )
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = FireOrange, unfocusedBorderColor = Color(0xFFE0E0E0))
                         )
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
+                        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                             sportMetMap.keys.forEach { sport ->
-                                DropdownMenuItem(
-                                    text = { Text(sport, fontSize = 15.sp) },
-                                    onClick = { selectedSport = sport; expanded = false }
-                                )
+                                DropdownMenuItem(text = { Text(sport, fontSize = 15.sp) }, onClick = { selectedSport = sport; expanded = false })
                             }
                         }
                     }
-
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Süre (dakika)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                    Text("Süre (dakika)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextGray)
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = durationText,
@@ -2125,27 +2092,22 @@ fun ExerciseCard(modifier: Modifier = Modifier) {
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryGreen,
-                            unfocusedBorderColor = Color(0xFFE0E0E0)
-                        ),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = FireOrange, unfocusedBorderColor = Color(0xFFE0E0E0)),
                         suffix = { Text("dk", color = TextGray) }
                     )
-
-                    // Anlık kalori önizlemesi
+                    // Kalori önizlemesi
                     val previewMet = sportMetMap[selectedSport] ?: 0f
                     val previewDuration = durationText.toIntOrNull() ?: 0
-                    val previewCal = (previewMet * weightKg * previewDuration / 60f).toInt()
                     if (selectedSport.isNotEmpty() && previewDuration > 0) {
+                        val previewCal = (previewMet * weightKg * previewDuration / 60f).toInt()
                         Spacer(modifier = Modifier.height(14.dp))
                         Surface(color = Color(0xFFFFF3ED), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text("🔥", fontSize = 20.sp)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
+                            Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text("Tahmini yakılan kalori", fontSize = 12.sp, color = Color(0xFFBF4800))
-                                    Text("~$previewCal kcal", fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = Color(0xFFFF6B35))
+                                    Text("~$previewCal kcal", fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = FireOrange)
                                 }
+                                Icon(Icons.Filled.LocalFireDepartment, contentDescription = null, tint = FireAmber, modifier = Modifier.size(28.dp))
                             }
                         }
                     }
@@ -2158,30 +2120,129 @@ fun ExerciseCard(modifier: Modifier = Modifier) {
                         val minutes = durationText.toIntOrNull() ?: 0
                         if (selectedSport.isNotEmpty() && minutes > 0) {
                             val burned = (met * weightKg * minutes / 60f).toInt()
-                            exerciseList = exerciseList + ExerciseEntry(selectedSport, minutes, burned)
-                            showDialog = false
-                            selectedSport = ""
-                            durationText = ""
-                            android.widget.Toast.makeText(context, "✅ $burned kcal yakıldı olarak kaydedildi!", android.widget.Toast.LENGTH_SHORT).show()
+                            onExerciseAdded(ExerciseEntry(selectedSport, minutes, burned))
+                            showDialog = false; selectedSport = ""; durationText = ""
+                            android.widget.Toast.makeText(context, "$burned kcal yakıldı olarak kaydedildi.", android.widget.Toast.LENGTH_SHORT).show()
                         } else {
                             android.widget.Toast.makeText(context, "Lütfen spor türü ve süre girin.", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                    colors = ButtonDefaults.buttonColors(containerColor = FireOrange),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Kaydet", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
+                ) { Text("Kaydet", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(
-                    onClick = { showDialog = false; selectedSport = ""; durationText = ""; expanded = false }
-                ) { Text("İptal", color = TextGray) }
+                androidx.compose.material3.TextButton(onClick = { showDialog = false; selectedSport = ""; durationText = ""; expanded = false }) {
+                    Text("İptal", color = TextGray)
+                }
             }
         )
     }
 }
+
+// ============================================================
+// GÜNÜN ÖZETİ KARTI
+// ============================================================
+@Composable
+fun DaySummaryCard(exerciseList: List<ExerciseEntry>) {
+    val totalConsumed = PersistenceManager.getMealCalorie("breakfast") +
+            PersistenceManager.getMealCalorie("lunch") +
+            PersistenceManager.getMealCalorie("dinner") +
+            PersistenceManager.getMealCalorie("snack")
+    val totalBurned  = exerciseList.sumOf { it.caloriesBurned }
+    val netCalories  = (totalConsumed - totalBurned).toInt()
+    val waterCount   = PersistenceManager.getWaterCount()
+    val waterMl      = waterCount * 250
+
+    // Bugünün yemeklerini API'den çek
+    var meals by remember { mutableStateOf<List<MealResponse>>(emptyList()) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        try {
+            val token = SessionManager.token ?: return@LaunchedEffect
+            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+            meals = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                RetrofitClient.instance.getMealsByDate(token, today)
+            }
+        } catch (_: Exception) {}
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A2B1A)),
+        elevation = CardDefaults.cardElevation(6.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(22.dp)) {
+            Text("Günün Özeti", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = Color.White)
+            Text(
+                java.text.SimpleDateFormat("d MMMM yyyy", java.util.Locale("tr")).format(java.util.Date()),
+                fontSize = 12.sp, color = Color(0xFF8AB58A)
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // ── 3'lü istatistik satırı ──
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                SummaryStatBox("Alınan", "${totalConsumed.toInt()} kcal", Color(0xFF4CAF50))
+                SummaryStatBox("Yakılan", "$totalBurned kcal", FireOrange)
+                SummaryStatBox("Net", "$netCalories kcal", if (netCalories <= 0) Color(0xFF4CAF50) else Color(0xFFFFCC02))
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+            Divider(color = Color(0xFF2E402E))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ── Su ──
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                Icon(Icons.Filled.WaterDrop, contentDescription = null, tint = Color(0xFF42A5F5), modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("Su", fontSize = 14.sp, color = Color(0xFFCCCCCC), modifier = Modifier.weight(1f))
+                Text("$waterCount bardak · ${waterMl} ml", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+            }
+
+            // ── Egzersizler ──
+            if (exerciseList.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                exerciseList.forEach { entry ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                        Icon(Icons.Filled.DirectionsRun, contentDescription = null, tint = FireOrange, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(entry.type, fontSize = 14.sp, color = Color(0xFFCCCCCC), modifier = Modifier.weight(1f))
+                        Text("${entry.minutes} dk · ${entry.caloriesBurned} kcal", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    }
+                }
+            }
+
+            // ── Yemekler ──
+            if (meals.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                meals.take(5).forEach { meal ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                        Icon(Icons.Filled.Restaurant, contentDescription = null, tint = Color(0xFF66BB6A), modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(meal.food_name, fontSize = 14.sp, color = Color(0xFFCCCCCC), modifier = Modifier.weight(1f), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        Text("${meal.calories.toInt()} kcal", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    }
+                }
+                if (meals.size > 5) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("+ ${meals.size - 5} yemek daha", fontSize = 12.sp, color = Color(0xFF8AB58A))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SummaryStatBox(label: String, value: String, valueColor: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = valueColor)
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(label, fontSize = 11.sp, color = Color(0xFF8AB58A))
+    }
+}
+
 
 @Composable
 fun InteractiveWaterCard(modifier: Modifier = Modifier) {
