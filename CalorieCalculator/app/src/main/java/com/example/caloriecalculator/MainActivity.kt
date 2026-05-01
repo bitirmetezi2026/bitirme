@@ -45,6 +45,12 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -1320,6 +1326,8 @@ fun HomeScreen() {
         item { DailyMealDetailCard(selectedDate = selectedDate) }
         item { Spacer(modifier = Modifier.height(16.dp)) }
         item { InteractiveWaterCard(modifier = Modifier.fillMaxWidth()) }
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+        item { ExerciseCard(modifier = Modifier.fillMaxWidth()) }
         item { Spacer(modifier = Modifier.height(24.dp)) }
     }
 }
@@ -1886,6 +1894,294 @@ fun SignUpText(onSignUpClick: () -> Unit) { Row { Text(text = stringResource(R.s
 fun SignInText(onSignInClick: () -> Unit) { Row { Text(text = stringResource(R.string.have_account), color = TextGray); Text(text = stringResource(R.string.signin_title), color = PrimaryGreen, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onSignInClick() }) } }
 @Composable
 fun InfoCard(title: String, value: String, modifier: Modifier) { Card(modifier = modifier.height(110.dp), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = LightGreenBg), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) { Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) { Text(title, color = TextGray, fontSize = 14.sp); Spacer(modifier=Modifier.height(8.dp)); Text(value, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = PrimaryGreen) } } }
+
+// ========================================================
+// EGZERSİZ KARTI — MET tabanlı kalori hesaplama + Lottie
+// ========================================================
+// Bilimsel yöntem: MET (Metabolic Equivalent of Task)
+//   Kaynak: Ainsworth BE et al., Medicine & Science in Sports & Exercise (2011)
+//   Formül: Kalori = MET × Ağırlık(kg) × Süre(saat)
+//   Her spor türü için standart MET değerleri kullanılır.
+// ========================================================
+data class ExerciseEntry(val type: String, val minutes: Int, val caloriesBurned: Int)
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun ExerciseCard(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    // Egzersiz kayıtları (gün içinde birden fazla olabilir)
+    var exerciseList by remember { mutableStateOf<List<ExerciseEntry>>(emptyList()) }
+    var showDialog by remember { mutableStateOf(false) }
+
+    // Dialog içi state'ler
+    var selectedSport by remember { mutableStateOf("") }
+    var durationText by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+
+    // Toplam yakılan kalori
+    val totalBurned = exerciseList.sumOf { it.caloriesBurned }
+    val hasExercise = exerciseList.isNotEmpty()
+
+    // Kullanıcı kilosu (hesaplama için)
+    val weightKg = PersistenceManager.kiloKg.let { if (it > 0) it else 70f }
+
+    // MET değerleri tablosu (Ainsworth 2011 Compendium)
+    val sportMetMap = linkedMapOf(
+        "🏃 Koşu"            to 9.8f,
+        "🚶 Yürüyüş"         to 3.5f,
+        "🚴 Bisiklet"        to 7.5f,
+        "🏊 Yüzme"           to 7.0f,
+        "⚽ Futbol"          to 7.0f,
+        "🏀 Basketbol"       to 6.5f,
+        "🎾 Tenis"           to 7.3f,
+        "🏋️ Ağırlık"        to 5.0f,
+        "🔥 HIIT"            to 10.3f,
+        "🧘 Yoga"            to 2.8f,
+        "🤸 Pilates"         to 3.5f,
+        "💃 Dans"            to 5.0f,
+        "🥊 Boks"            to 9.0f,
+        "⛷️ Kayak"           to 6.8f,
+        "🏄 Sörf"            to 3.0f,
+        "🧗 Tırmanma"        to 8.0f
+    )
+
+    // Lottie animasyonu: kol — spor girilmemişse başlangıç, girilmişse full progress
+    val muscleComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.muscle))
+    val muscleTarget = if (hasExercise) 1f else 0f
+    val muscleProgress by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = muscleTarget,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        )
+    )
+
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+
+            // ── HEADER ──
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Lottie kol animasyonu
+                Box(
+                    modifier = Modifier.size(64.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (muscleComposition != null) {
+                        LottieAnimation(
+                            composition = muscleComposition!!,
+                            progress = { muscleProgress },
+                            modifier = Modifier.size(64.dp)
+                        )
+                    } else {
+                        Text("💪", fontSize = 36.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Egzersiz Takibi", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = Color(0xFF1A1A1A))
+                    Text(
+                        if (hasExercise) "$totalBurned kcal yakıldı 🔥" else "Bugün egzersiz girilmedi",
+                        fontSize = 13.sp,
+                        color = if (hasExercise) Color(0xFFFF6B35) else TextGray,
+                        fontWeight = if (hasExercise) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+                // Ekle butonu
+                Button(
+                    onClick = { showDialog = true },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Ekle", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            // ── EGZERSİZ LİSTESİ ──
+            if (hasExercise) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Divider(color = Color(0xFFF0F0F0))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Toplam özet chip'i
+                Surface(
+                    color = Color(0xFFFFF3ED),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("🔥 Toplam yakılan:", color = Color(0xFFBF4800), fontSize = 13.sp, modifier = Modifier.weight(1f))
+                        Text("$totalBurned kcal", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = Color(0xFFFF6B35))
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                exerciseList.forEachIndexed { idx, entry ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFFFF3ED)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(entry.type.split(" ").first(), fontSize = 16.sp)
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(entry.type.substringAfter(" "), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF333333))
+                            Text("${entry.minutes} dakika", fontSize = 12.sp, color = TextGray)
+                        }
+                        Text("−${entry.caloriesBurned} kcal", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF6B35))
+                    }
+                    if (idx < exerciseList.lastIndex) Divider(color = Color(0xFFF8F8F8))
+                }
+            } else {
+                // Boş durum — teşvik mesajı
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "Bugün henüz egzersiz kaydı yok. Harekete geç, kalorileri yak! 💪",
+                    fontSize = 13.sp, color = TextGray,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
+        }
+    }
+
+    // ── EGZERSİZ EKLEME DİALOĞU ──
+    if (showDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {
+                showDialog = false
+                selectedSport = ""
+                durationText = ""
+                expanded = false
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(24.dp),
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("💪", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Egzersiz Ekle", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF1A1A1A))
+                }
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text("Spor Türü", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Sport dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = expanded,
+                        onExpandedChange = { expanded = !expanded }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedSport,
+                            onValueChange = {},
+                            readOnly = true,
+                            placeholder = { Text("Spor seçin...", color = TextGray) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryGreen,
+                                unfocusedBorderColor = Color(0xFFE0E0E0)
+                            )
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            sportMetMap.keys.forEach { sport ->
+                                DropdownMenuItem(
+                                    text = { Text(sport, fontSize = 15.sp) },
+                                    onClick = { selectedSport = sport; expanded = false }
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Süre (dakika)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = durationText,
+                        onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 3) durationText = it },
+                        placeholder = { Text("Örn: 30", color = TextGray) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryGreen,
+                            unfocusedBorderColor = Color(0xFFE0E0E0)
+                        ),
+                        suffix = { Text("dk", color = TextGray) }
+                    )
+
+                    // Anlık kalori önizlemesi
+                    val previewMet = sportMetMap[selectedSport] ?: 0f
+                    val previewDuration = durationText.toIntOrNull() ?: 0
+                    val previewCal = (previewMet * weightKg * previewDuration / 60f).toInt()
+                    if (selectedSport.isNotEmpty() && previewDuration > 0) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Surface(color = Color(0xFFFFF3ED), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("🔥", fontSize = 20.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text("Tahmini yakılan kalori", fontSize = 12.sp, color = Color(0xFFBF4800))
+                                    Text("~$previewCal kcal", fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = Color(0xFFFF6B35))
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val met = sportMetMap[selectedSport] ?: 0f
+                        val minutes = durationText.toIntOrNull() ?: 0
+                        if (selectedSport.isNotEmpty() && minutes > 0) {
+                            val burned = (met * weightKg * minutes / 60f).toInt()
+                            exerciseList = exerciseList + ExerciseEntry(selectedSport, minutes, burned)
+                            showDialog = false
+                            selectedSport = ""
+                            durationText = ""
+                            android.widget.Toast.makeText(context, "✅ $burned kcal yakıldı olarak kaydedildi!", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            android.widget.Toast.makeText(context, "Lütfen spor türü ve süre girin.", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Kaydet", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { showDialog = false; selectedSport = ""; durationText = ""; expanded = false }
+                ) { Text("İptal", color = TextGray) }
+            }
+        )
+    }
+}
 
 @Composable
 fun InteractiveWaterCard(modifier: Modifier = Modifier) {
