@@ -207,6 +207,27 @@ def read_meals(
     meals = db.query(models.Meal).filter(models.Meal.user_id == current_user.id).all()
     return meals
 
+@app.get("/meals/by-date/", response_model=List[schemas.MealResponse])
+def read_meals_by_date(
+    date: str = Query(..., description="Tarih formatı: YYYY-MM-DD"),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Belirli bir tarihe ait yemekleri döner. date parametresi YYYY-MM-DD formatında olmalıdır."""
+    from datetime import datetime, timedelta
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d")
+        next_day = target_date + timedelta(days=1)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Tarih formatı hatalı. YYYY-MM-DD kullanın.")
+    
+    meals = db.query(models.Meal).filter(
+        models.Meal.user_id == current_user.id,
+        models.Meal.created_at >= target_date,
+        models.Meal.created_at < next_day
+    ).order_by(models.Meal.created_at.asc()).all()
+    return meals
+
 # =============================================
 # 6. SU TAKİBİ
 # =============================================

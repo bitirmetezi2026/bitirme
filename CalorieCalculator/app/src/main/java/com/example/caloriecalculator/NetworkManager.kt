@@ -69,6 +69,16 @@ data class WaterCreate(
     val amount_ml: Int
 )
 
+data class MealResponse(
+    val id: Int,
+    val food_name: String,
+    val calories: Float,
+    val protein: Float?,
+    val fat: Float?,
+    val carbs: Float?,
+    val created_at: String?
+)
+
 data class FoodAnalysisResponse(
     val food_name: String,
     val portion: String,
@@ -150,6 +160,12 @@ interface DiyetApi {
         @retrofit2.http.Header("Authorization") token: String,
         @Body request: WaterCreate
     ): okhttp3.ResponseBody
+
+    @retrofit2.http.GET("meals/by-date/")
+    suspend fun getMealsByDate(
+        @retrofit2.http.Header("Authorization") token: String,
+        @Query("date") date: String
+    ): List<MealResponse>
 
     @Multipart
     @POST("recommend-recipes")

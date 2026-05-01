@@ -1246,6 +1246,8 @@ fun CalorieDonutChart(consumed: Float, target: Float, title: String) {
 
 @Composable
 fun HomeScreen() {
+    var selectedDate by remember { mutableStateOf("") } // YYYY-MM-DD format, boşsa bugün
+    
     LazyColumn(modifier = Modifier.fillMaxSize().background(SoftWhite).padding(horizontal = 16.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)) {
         item { Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Image(painter = painterResource(id = R.drawable.app_logo), contentDescription = "Profile", modifier = Modifier.size(54.dp).clip(CircleShape)); Spacer(modifier = Modifier.width(12.dp)); Column(modifier = Modifier.weight(1f)) { Text("Merhaba", fontSize = 14.sp, color = TextGray); Text(SessionManager.userName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen) }; Icon(Icons.Filled.Notifications, contentDescription = null, tint = PrimaryGreen) } }
         item { Spacer(modifier = Modifier.height(24.dp)) }
@@ -1268,14 +1270,17 @@ fun HomeScreen() {
                         title = displayTitle
                     )
                     Spacer(modifier = Modifier.height(24.dp))
-                    MonthlyBarChartPager(onBarClick = { dayTitle, calories ->
+                    MonthlyBarChartPager(onBarClick = { dayTitle, calories, dateStr ->
                         displayTitle = "$dayTitle Kalorisi"
                         displayCalories = calories
+                        selectedDate = dateStr // YYYY-MM-DD formatında gün bilgisi
                     })
                 }
             }
         }
-        item { Spacer(modifier = Modifier.height(24.dp)) }
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+        item { DailyMealDetailCard(selectedDate = selectedDate) }
+        item { Spacer(modifier = Modifier.height(16.dp)) }
         item { InteractiveWaterCard(modifier = Modifier.fillMaxWidth()) }
         item { Spacer(modifier = Modifier.height(24.dp)) }
     }
@@ -2024,7 +2029,7 @@ fun WelcomeScreen(navController: NavController) { Box(modifier = Modifier.fillMa
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun MonthlyBarChartPager(onBarClick: (String, Float) -> Unit) {
+fun MonthlyBarChartPager(onBarClick: (String, Float, String) -> Unit) {
     val cal = java.util.Calendar.getInstance()
     val maxCalorieGoal = PersistenceManager.getTargetCalories().let { if (it > 0) it else 2500f }
     val currentMonth = cal.get(java.util.Calendar.MONTH)
@@ -2070,7 +2075,7 @@ fun MonthlyBarChartPager(onBarClick: (String, Float) -> Unit) {
                     val percentage = (calories / maxCalorieGoal).coerceIn(0f, 1f)
                     
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { 
-                        onBarClick("$day $monthName", calories) 
+                        onBarClick("$day $monthName", calories, dateStr) 
                     }) { 
                         Box(modifier = Modifier.width(20.dp).fillMaxHeight(percentage.coerceAtLeast(0.02f)).clip(RoundedCornerShape(6.dp)).background(if (isToday) LeafGreen else LeafGreen.copy(alpha = 0.3f)))
                         Spacer(modifier = Modifier.height(4.dp))
@@ -2081,6 +2086,111 @@ fun MonthlyBarChartPager(onBarClick: (String, Float) -> Unit) {
         }
     }
 }
+@Composable
+fun DailyMealDetailCard(selectedDate: String) {
+    var isExpanded by remember { mutableStateOf(false) }
+    var meals by remember { mutableStateOf<List<MealResponse>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf("") }
+
+    val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+    val displayDate = if (selectedDate.isEmpty()) today else selectedDate
+    val isToday = displayDate == today
+    val labelText = if (isToday) "Bugünün Öğünleri" else {
+        try {
+            val parts = displayDate.split("-")
+            val monthNames = listOf("Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık")
+            "${parts[2].trimStart('0')} ${monthNames[parts[1].toInt()-1]} Öğünleri"
+        } catch(e: Exception) { displayDate }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(isExpanded, displayDate) {
+        if (!isExpanded) return@LaunchedEffect
+        isLoading = true
+        errorMsg = ""
+        meals = emptyList()
+        try {
+            val token = SessionManager.token ?: ""
+            if (token.isNotEmpty()) {
+                val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    RetrofitClient.instance.getMealsByDate(token, displayDate)
+                }
+                meals = result
+            } else {
+                errorMsg = "Giriş yapmanız gerekiyor."
+            }
+        } catch (e: Exception) {
+            errorMsg = "Yemekler yüklenemedi."
+        } finally {
+            isLoading = false
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { isExpanded = !isExpanded },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(42.dp).clip(CircleShape).background(LightGreenBg), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Restaurant, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(22.dp))
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(labelText, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF222222))
+                    Text(if (isExpanded) "Gizlemek için dokun" else "Detaylar için dokun", fontSize = 12.sp, color = TextGray)
+                }
+                Icon(imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null, tint = PrimaryGreen)
+            }
+
+            androidx.compose.animation.AnimatedVisibility(visible = isExpanded) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Divider(color = Color(0xFFF0F0F0))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    when {
+                        isLoading -> Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = PrimaryGreen, modifier = Modifier.size(32.dp))
+                        }
+                        errorMsg.isNotEmpty() -> Text(errorMsg, color = Color.Gray, fontSize = 14.sp, modifier = Modifier.padding(8.dp))
+                        meals.isEmpty() -> Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("🍽️", fontSize = 36.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Bu gün için kayıt bulunamadı", color = TextGray, fontSize = 14.sp)
+                        }
+                        else -> {
+                            val totalCal = meals.sumOf { it.calories.toDouble() }.toFloat()
+                            Surface(color = LightGreenBg, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                                Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Toplam:", color = TextGray, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                                    Text("${totalCal.toInt()} kcal", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = PrimaryGreen)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            meals.forEachIndexed { index, meal ->
+                                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(PrimaryGreen))
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(meal.food_name, fontSize = 14.sp, color = Color(0xFF333333), fontWeight = FontWeight.Medium)
+                                        if ((meal.protein ?: 0f) > 0f || (meal.carbs ?: 0f) > 0f || (meal.fat ?: 0f) > 0f) {
+                                            Text("P: ${meal.protein?.toInt() ?: 0}g  K: ${meal.carbs?.toInt() ?: 0}g  Y: ${meal.fat?.toInt() ?: 0}g", fontSize = 11.sp, color = TextGray)
+                                        }
+                                    }
+                                    Text("${meal.calories.toInt()} kcal", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen)
+                                }
+                                if (index < meals.lastIndex) Divider(color = Color(0xFFF5F5F5))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun StatisticInfoCard(title: String, value: String, icon: ImageVector, color: Color, modifier: Modifier = Modifier) {
     Card(modifier = modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
