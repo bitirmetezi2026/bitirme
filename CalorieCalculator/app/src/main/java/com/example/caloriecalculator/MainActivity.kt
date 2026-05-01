@@ -343,7 +343,29 @@ fun MainScaffold(onLogout: () -> Unit) {
                                     val label = meals.find { it.second == selectedMealKey }?.first ?: ""
                                     val newCal = PersistenceManager.getMealCalorie(selectedMealKey!!) + analysisResult!!.calories.toFloat()
                                     PersistenceManager.saveMealCalorie(selectedMealKey!!, newCal)
-                                    android.widget.Toast.makeText(context, "${analysisResult!!.food_name} $label öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
+                                    
+                                    // API'ye de kaydet (arka planda)
+                                    val foodName = analysisResult!!.food_name
+                                    val calories = analysisResult!!.calories.toFloat()
+                                    val protein = analysisResult!!.macros.protein.toFloat()
+                                    val fat = analysisResult!!.macros.fat.toFloat()
+                                    val carbs = analysisResult!!.macros.carbs.toFloat()
+                                    coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                        try {
+                                            val token = SessionManager.token ?: ""
+                                            if (token.isNotEmpty()) {
+                                                RetrofitClient.instance.saveMeal(token, MealCreate(
+                                                    food_name = foodName,
+                                                    calories = calories,
+                                                    protein = protein,
+                                                    fat = fat,
+                                                    carbs = carbs
+                                                ))
+                                            }
+                                        } catch (e: Exception) { /* Sessizce yoksay */ }
+                                    }
+                                    
+                                    android.widget.Toast.makeText(context, "$foodName $label öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
                                     analysisResult = null
                                     selectedMealKey = null
                                 } else {
@@ -1071,7 +1093,23 @@ fun StatisticScreen() {
                                     val currentCals = PersistenceManager.getMealCalorie(key)
                                     val calValue = recipeToAddToMeal!!.calories.split(" ").firstOrNull()?.toFloatOrNull() ?: 0f
                                     PersistenceManager.saveMealCalorie(key, currentCals + calValue)
-                                    android.widget.Toast.makeText(context, "${recipeToAddToMeal!!.name} $label öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
+                                    
+                                    // API'ye de kaydet (arka planda)
+                                    val recipeName = recipeToAddToMeal!!.name
+                                    val recipeCalories = calValue
+                                    coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                        try {
+                                            val token = SessionManager.token ?: ""
+                                            if (token.isNotEmpty()) {
+                                                RetrofitClient.instance.saveMeal(token, MealCreate(
+                                                    food_name = recipeName,
+                                                    calories = recipeCalories
+                                                ))
+                                            }
+                                        } catch (e: Exception) { /* Sessizce yoksay */ }
+                                    }
+                                    
+                                    android.widget.Toast.makeText(context, "$recipeName $label öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
                                     recipeToAddToMeal = null
                                 },
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
