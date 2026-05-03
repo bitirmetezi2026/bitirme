@@ -1225,125 +1225,131 @@ fun RecipeCard(
 @Composable
 fun CalorieDonutChart(consumed: Float, target: Float, title: String, burnedCalories: Float = 0f) {
     val netCalories = (consumed - burnedCalories).coerceAtLeast(0f)
+    val isOver      = consumed > target
     val progress    = if (target > 0) (consumed / target).coerceAtMost(1f) else 0f
     val netProgress = if (target > 0) (netCalories / target).coerceAtMost(1f) else 0f
-    val isOver      = consumed > target
 
     val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = progress,
-        animationSpec = androidx.compose.animation.core.tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-        label = "progress"
+        targetValue = progress, label = "p",
+        animationSpec = androidx.compose.animation.core.tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing)
     )
     val animatedNetProgress by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = netProgress,
-        animationSpec = androidx.compose.animation.core.tween(1500, 300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-        label = "netProgress"
+        targetValue = netProgress, label = "np",
+        animationSpec = androidx.compose.animation.core.tween(1500, 300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
     )
     val animatedOverProgress by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isOver) ((consumed - target) / target).coerceAtMost(1f) else 0f,
-        animationSpec = androidx.compose.animation.core.tween(1000, 500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-        label = "overProgress"
+        targetValue = if (isOver) ((consumed - target) / target).coerceAtMost(1f) else 0f, label = "op",
+        animationSpec = androidx.compose.animation.core.tween(1000, 500, easing = androidx.compose.animation.core.FastOutSlowInEasing)
     )
 
-    Box(modifier = Modifier.fillMaxWidth().height(270.dp), contentAlignment = Alignment.Center) {
-        androidx.compose.foundation.Canvas(modifier = Modifier.size(220.dp)) {
+    val cGreen = Color(0xFF4CAF50)
+    val cOrange = Color(0xFFFF7043)
+    val cRed   = Color(0xFFFF5252)
+    val consumedColor = if (isOver) cRed else cGreen
+
+    Box(modifier = Modifier.fillMaxWidth().height(310.dp)) {
+
+        // ── TAM GENİŞLİKTE CANVAS ──
+        androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
+            val cx = size.width / 2f
+            val cy = 132.dp.toPx()         // halka merkezi (üstten)
             val outerStroke = 22.dp.toPx()
-            val innerStroke = 14.dp.toPx()
-            val gap         = 18.dp.toPx()      // iç ve dış halka arasındaki boşluk
-            val outerRadius = size.minDimension / 2f
-            val innerDiam   = size.minDimension - (outerStroke + gap + innerStroke) * 2f
-            val innerInset  = (size.minDimension - innerDiam) / 2f
-            val innerSize   = androidx.compose.ui.geometry.Size(innerDiam, innerDiam)
+            val innerStroke = 13.dp.toPx()
+            val gap         = 15.dp.toPx()
+            val outerR      = 100.dp.toPx()
+            val innerR      = outerR - outerStroke / 2f - gap - innerStroke / 2f
 
-            // ── DIŞ HALKA (Tüketilen kalori) ──
-            // Arka plan
-            drawArc(
-                color = Color(0xFFF0F0F0), startAngle = -90f, sweepAngle = 360f, useCenter = false,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(outerStroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-            )
-            // Yeşil ilerleme
-            if (animatedProgress > 0f) drawArc(
-                color = Color(0xFF4CAF50), startAngle = -90f, sweepAngle = 360f * animatedProgress, useCenter = false,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(outerStroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-            )
-            // Kırmızı aşım
-            if (animatedOverProgress > 0f) drawArc(
-                color = Color(0xFFFF5252), startAngle = -90f, sweepAngle = 360f * animatedOverProgress, useCenter = false,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(outerStroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-            )
+            val outerTL = androidx.compose.ui.geometry.Offset(cx - outerR, cy - outerR)
+            val outerSz = androidx.compose.ui.geometry.Size(outerR * 2f, outerR * 2f)
+            val innerTL = androidx.compose.ui.geometry.Offset(cx - innerR, cy - innerR)
+            val innerSz = androidx.compose.ui.geometry.Size(innerR * 2f, innerR * 2f)
+            val sRound  = androidx.compose.ui.graphics.StrokeCap.Round
 
-            // ── İÇ HALKA (Net kalori — egzersiz sonrası) ──
-            if (burnedCalories > 0f) {
-                // Arka plan
-                drawArc(
-                    color = Color(0xFFEEEEEE),
-                    startAngle = -90f, sweepAngle = 360f, useCenter = false,
-                    topLeft = androidx.compose.ui.geometry.Offset(innerInset, innerInset),
-                    size = innerSize,
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(innerStroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                )
-                // Turuncu net ilerleme
-                if (animatedNetProgress > 0f) drawArc(
-                    color = Color(0xFFFF7043),
-                    startAngle = -90f, sweepAngle = 360f * animatedNetProgress, useCenter = false,
-                    topLeft = androidx.compose.ui.geometry.Offset(innerInset, innerInset),
-                    size = innerSize,
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(innerStroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                )
-            }
+            // Dış halka (Alınan)
+            drawArc(Color(0xFFF0F0F0), -90f, 360f, false, outerTL, outerSz, style = androidx.compose.ui.graphics.drawscope.Stroke(outerStroke, cap = sRound))
+            if (animatedProgress > 0f)     drawArc(cGreen, -90f, 360f * animatedProgress,    false, outerTL, outerSz, style = androidx.compose.ui.graphics.drawscope.Stroke(outerStroke, cap = sRound))
+            if (animatedOverProgress > 0f) drawArc(cRed,   -90f, 360f * animatedOverProgress, false, outerTL, outerSz, style = androidx.compose.ui.graphics.drawscope.Stroke(outerStroke, cap = sRound))
+
+            // İç halka (Net — her zaman görünür)
+            drawArc(Color(0xFFEEEEEE), -90f, 360f, false, innerTL, innerSz, style = androidx.compose.ui.graphics.drawscope.Stroke(innerStroke, cap = sRound))
+            if (animatedNetProgress > 0f) drawArc(cOrange, -90f, 360f * animatedNetProgress, false, innerTL, innerSz, style = androidx.compose.ui.graphics.drawscope.Stroke(innerStroke, cap = sRound))
+
+            // ── CALLOUT ÇİZGİLERİ ──
+            // Compose arc açısı: 0°=sağ, 90°=alt, 180°=sol, -90°=üst
+            val PI = kotlin.math.PI
+
+            // Sol callout → iç halkadan 135° (alt-sol)
+            val lA  = (135.0 * PI / 180.0)
+            val lRx = (cx + innerR * kotlin.math.cos(lA)).toFloat()
+            val lRy = (cy + innerR * kotlin.math.sin(lA)).toFloat()
+            val lDx = 14.dp.toPx()
+            val lDy = cy + outerR + 16.dp.toPx()
+
+            // Sağ callout → dış halkadan 45° (alt-sağ)
+            val rA  = (45.0 * PI / 180.0)
+            val rRx = (cx + outerR * kotlin.math.cos(rA)).toFloat()
+            val rRy = (cy + outerR * kotlin.math.sin(rA)).toFloat()
+            val rDx = size.width - 14.dp.toPx()
+            val rDy = cy + outerR + 16.dp.toPx()
+
+            val lw = 1.5.dp.toPx()
+            val dr = 4.5.dp.toPx()
+
+            drawLine(cOrange.copy(alpha = 0.7f), androidx.compose.ui.geometry.Offset(lRx, lRy), androidx.compose.ui.geometry.Offset(lDx, lDy), lw)
+            drawCircle(cOrange, dr, androidx.compose.ui.geometry.Offset(lDx, lDy))
+
+            drawLine(consumedColor.copy(alpha = 0.7f), androidx.compose.ui.geometry.Offset(rRx, rRy), androidx.compose.ui.geometry.Offset(rDx, rDy), lw)
+            drawCircle(consumedColor, dr, androidx.compose.ui.geometry.Offset(rDx, rDy))
         }
 
-        // Ortadaki metin bloğu
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Alınan Kalori", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                consumed.toInt().toString(),
-                fontSize = 38.sp, fontWeight = FontWeight.ExtraBold,
-                color = if (isOver) Color(0xFFFF5252) else Color(0xFF2E7D32)
-            )
-            Text("/ ${target.toInt()} kcal", fontSize = 13.sp, color = Color.Gray)
-
-            if (!isOver && burnedCalories == 0f) {
-                // net yok, aşım yok — hiçbir şey gösterme
-            } else if (isOver && burnedCalories == 0f) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Surface(color = Color(0xFFFFEBEE), shape = RoundedCornerShape(12.dp)) {
-                    Text(
-                        "${(consumed - target).toInt()} kcal aşıldı",
-                        fontSize = 11.sp, color = Color(0xFFD32F2F),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-    }
-
-    // ── HALKA DIŞI ETİKET SATIRI — egzersiz girilmişse göster ──
-    if (burnedCalories > 0f) {
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+        // ── SOL ETİKET — Net Kalori ──
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 6.dp, bottom = 18.dp),
+            horizontalAlignment = Alignment.Start
         ) {
-            // Alınan chip (yeşil)
-            Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(20.dp)) {
-                Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF4CAF50)))
-                    Spacer(modifier = Modifier.width(5.dp))
-                    Text("Alınan: ${consumed.toInt()} kcal", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
-                }
-            }
-            Spacer(modifier = Modifier.width(10.dp))
-            // Net chip (turuncu)
-            Surface(color = Color(0xFFFFF3ED), shape = RoundedCornerShape(20.dp)) {
-                Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.LocalFireDepartment, contentDescription = null, tint = Color(0xFFFF7043), modifier = Modifier.size(13.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Net: ${(consumed - burnedCalories).toInt().coerceAtLeast(0)} kcal", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFBF4800))
-                }
+            Text("Net Kalori", fontSize = 10.sp, color = cOrange, fontWeight = FontWeight.SemiBold, letterSpacing = 0.3.sp)
+            Text(
+                "${netCalories.toInt()}",
+                fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = cOrange
+            )
+            Text("kcal", fontSize = 10.sp, color = Color.Gray)
+        }
+
+        // ── SAĞ ETİKET — Alınan Kalori ──
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 6.dp, bottom = 18.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            Text("Alınan", fontSize = 10.sp, color = consumedColor, fontWeight = FontWeight.SemiBold, letterSpacing = 0.3.sp)
+            Text(
+                "${consumed.toInt()}",
+                fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = consumedColor
+            )
+            Text("kcal", fontSize = 10.sp, color = Color.Gray)
+        }
+
+        // ── HEDEF — üst orta ──
+        Text(
+            "Hedef: ${target.toInt()} kcal",
+            fontSize = 11.sp, color = Color(0xFFAAAAAA),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
+        )
+
+        // ── AŞIM uyarısı — ortada ──
+        if (isOver) {
+            Surface(
+                color = Color(0xFFFFEBEE), shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.align(Alignment.Center)
+            ) {
+                Text(
+                    "+${(consumed - target).toInt()} kcal aşıldı",
+                    fontSize = 11.sp, color = cRed, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                )
             }
         }
     }
