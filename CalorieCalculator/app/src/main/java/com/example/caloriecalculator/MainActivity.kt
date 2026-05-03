@@ -1319,7 +1319,7 @@ fun CalorieDonutChart(consumed: Float, target: Float, title: String, burnedCalor
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 4.dp, bottom = 14.dp),
+                .padding(start = 4.dp, bottom = 10.dp),
             horizontalAlignment = Alignment.Start
         ) {
             Text(
