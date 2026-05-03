@@ -2427,10 +2427,8 @@ fun InteractiveWaterCard(modifier: Modifier = Modifier) {
 
     val isGlowing = waterGlasses >= goalGlasses
     
-    Card(
-        modifier = modifier.height(140.dp).clickable {
-            if (isLoading) return@clickable
-            
+    val handleAddWater = {
+        if (!isLoading) {
             // Yerel veritabanını anında güncelle
             val newCount = waterGlasses + 1
             PersistenceManager.setWaterCount(newCount)
@@ -2450,7 +2448,11 @@ fun InteractiveWaterCard(modifier: Modifier = Modifier) {
                     }
                 }
             }
-        },
+        }
+    }
+    
+    Card(
+        modifier = modifier.height(140.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(if (isGlowing) 8.dp else 2.dp)
@@ -2544,8 +2546,18 @@ fun InteractiveWaterCard(modifier: Modifier = Modifier) {
                 if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color(0xFF1976D2), strokeWidth = 2.dp)
                 } else {
-                    Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFF1976D2)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Add, contentDescription = "Add Water", tint = Color.White, modifier = Modifier.size(24.dp))
+                    Button(
+                        onClick = handleAddWater,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF1976D2),
+                            contentColor = Color.White
+                        ),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "Su Ekle", modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Ekle", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
