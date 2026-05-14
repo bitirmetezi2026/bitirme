@@ -1512,8 +1512,9 @@ fun RecipeCard(
 @Composable
 fun CalorieDonutChart(consumed: Float, target: Float, title: String, burnedCalories: Float = 0f) {
     val netCalories   = (consumed - burnedCalories).coerceAtLeast(0f)
-    val isOver        = consumed > target
-    val progress      = if (target > 0) (consumed / target).coerceAtMost(1f) else 0f
+    val adjustedTarget = target + burnedCalories
+    val isOver        = consumed > adjustedTarget
+    val progress      = if (adjustedTarget > 0) (consumed / adjustedTarget).coerceAtMost(1f) else 0f
     val netProgress   = if (target > 0) (netCalories / target).coerceAtMost(1f) else 0f
 
     val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
@@ -1525,7 +1526,7 @@ fun CalorieDonutChart(consumed: Float, target: Float, title: String, burnedCalor
         animationSpec = androidx.compose.animation.core.tween(1500, 300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
     )
     val animatedOverProgress by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isOver) ((consumed - target) / target).coerceAtMost(1f) else 0f, label = "op",
+        targetValue = if (isOver) ((consumed - adjustedTarget) / adjustedTarget).coerceAtMost(1f) else 0f, label = "op",
         animationSpec = androidx.compose.animation.core.tween(1000, 500, easing = androidx.compose.animation.core.FastOutSlowInEasing)
     )
 
@@ -1614,7 +1615,7 @@ fun CalorieDonutChart(consumed: Float, target: Float, title: String, burnedCalor
                     ) {
                         Icon(Icons.Filled.Warning, null, tint = cRed, modifier = Modifier.size(11.dp))
                         Spacer(modifier = Modifier.width(3.dp))
-                        Text("+${(consumed - target).toInt()} kcal aşıldı", fontSize = 10.sp, color = cRed, fontWeight = FontWeight.Bold)
+                        Text("+${(consumed - adjustedTarget).toInt()} kcal aşıldı", fontSize = 10.sp, color = cRed, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -1664,7 +1665,7 @@ fun CalorieDonutChart(consumed: Float, target: Float, title: String, burnedCalor
                         fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, color = consumedColor
                     )
                     Text(
-                        " / ${target.toInt()}",
+                        " / ${adjustedTarget.toInt()}",
                         fontSize = 11.sp, color = Color(0xFFBBBBBB),
                         modifier = Modifier.padding(bottom = 3.dp)
                     )
