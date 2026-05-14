@@ -427,7 +427,7 @@ fun MainScaffold(onLogout: () -> Unit) {
                                     fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1A1A1A)
                                 )
                                 Text(
-                                    "Ne yediğini yaz, yapay zeka hesaplasın",
+                                    "Ne yediğini yaz, yapay zeka şefimiz hesaplasın",
                                     fontSize = 13.sp, color = TextGray
                                 )
                             }
@@ -567,7 +567,7 @@ fun MainScaffold(onLogout: () -> Unit) {
                                                 bugunku_ogunler = emptyList()
                                             )
                                             if (token.isNotEmpty()) {
-                                                val resp = RetrofitClient.instance.chatWithAi("Bearer $token", chatReq)
+                                                val resp = RetrofitClient.instance.chatWithAi(token, chatReq)
                                                 val raw = resp.reply ?: ""
                                                 val jsonMatch = Regex("""\{[^\{\}]*\}""").find(raw)?.value
                                                 if (jsonMatch != null) {
@@ -692,7 +692,7 @@ fun MainScaffold(onLogout: () -> Unit) {
                                                     val token = SessionManager.token ?: ""
                                                     if (token.isNotEmpty()) {
                                                         RetrofitClient.instance.saveMeal(
-                                                            "Bearer $token",
+                                                            token,
                                                             MealCreate(
                                                                 food_name = res.food_name,
                                                                 calories = res.calories.toFloat(),

@@ -1,29 +1,27 @@
-import sys
-sys.path.append("C:\\Users\\kaan\\Desktop\\diyet-rag")
+﻿import requests
+import string
+import random
 
-import main
-from fastapi.testclient import TestClient
+BASE_URL = 'https://bitirme-g5gn.onrender.com'
 
-client = TestClient(main.app)
+def test_api():
+    email = ''.join(random.choices(string.ascii_lowercase, k=10)) + '@test.com'
+    password = 'password123'
 
-response = client.post("/chat", json={
-    "user_id": 1,
-    "user_message": "Sabahki kahvaltımdan sonra öğlen ne yemeliyim?",
-    "history": "",
-    "boy_cm": 180,
-    "kilo_kg": 75,
-    "yas": 25,
-    "cinsiyet": "erkek",
-    "bugunku_ogunler": [
-        {
-            "food_name": "karpuz",
-            "calories": 500,
-            "protein": 0,
-            "fat": 0,
-            "carbs": 0
-        }
-    ]
-})
+    res = requests.post(f'{BASE_URL}/users/', json={'email': email, 'password': password})
 
-print("Status Code:", response.status_code)
-print("Response JSON:", response.json())
+    res = requests.post(f'{BASE_URL}/auth/login', json={'email': email, 'password': password})
+    print('Login:', res.status_code)
+    
+    if res.status_code == 200:
+        token = res.json().get('access_token')
+        headers = {'Authorization': f'Bearer {token}'}
+        
+        ex_data = {'exercise_type': 'Kosu', 'minutes': 30, 'calories_burned': 200.0}
+        res2 = requests.post(f'{BASE_URL}/exercises/', json=ex_data, headers=headers)
+        print('Save Exercise:', res2.status_code, res2.text)
+        
+        res3 = requests.get(f'{BASE_URL}/exercises/by-date/?date=2026-05-14', headers=headers)
+        print('Get Exercises:', res3.status_code, res3.text)
+
+test_api()
