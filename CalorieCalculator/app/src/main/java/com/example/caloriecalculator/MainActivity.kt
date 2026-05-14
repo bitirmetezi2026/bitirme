@@ -395,68 +395,342 @@ fun MainScaffold(onLogout: () -> Unit) {
                 }
             }
             if (isManualEntryOpen) {
-                var entryType by remember { mutableStateOf(0) } // 0: Yemek İsmi, 1: Malzeme Listesi
-                var textInput by remember { mutableStateOf("") }
-                
-                Box(modifier = Modifier.fillMaxSize().background(Color.White).clickable(
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = {}
-                ).padding(top = 48.dp, bottom = 120.dp, start = 24.dp, end = 24.dp)) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        // Header (Close Button)
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            IconButton(onClick = { isManualEntryOpen = false; textInput = "" }) { 
-                                Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = Color.DarkGray, modifier = Modifier.size(28.dp)) 
-                            }
-                        }
-                        
-                        Text("Manuel Kalori Hesapla", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color.Black)
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        // Toggle for entry type
-                        Row(modifier = Modifier.fillMaxWidth().height(55.dp).background(SoftWhite, RoundedCornerShape(25.dp)).padding(4.dp)) {
-                            Box(modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(25.dp)).background(if (entryType == 0) PrimaryGreen else Color.Transparent).clickable { entryType = 0; textInput = "" }, contentAlignment = Alignment.Center) {
-                                Text("Yemek İsmi", color = if (entryType == 0) Color.White else TextGray, fontWeight = FontWeight.Bold)
-                            }
-                            Box(modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(25.dp)).background(if (entryType == 1) PrimaryGreen else Color.Transparent).clickable { entryType = 1; textInput = "" }, contentAlignment = Alignment.Center) {
-                                Text("Malzeme Listesi", color = if (entryType == 1) Color.White else TextGray, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(32.dp))
-                        
-                        val titleLabel = if (entryType == 0) "Yemek İsmini Girin" else "Malzeme Listesini Girin"
-                        val hintLabel = if (entryType == 0) "Örn: 1 porsiyon iskender kebap" else "Örn: 2 yumurta, 1 dilim peynir, 2 dilim ekmek"
-                        
-                        OutlinedTextField(
-                            value = textInput,
-                            onValueChange = { textInput = it },
-                            modifier = Modifier.fillMaxWidth().weight(1f),
-                            label = { Text(titleLabel) },
-                            placeholder = { Text(hintLabel) },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryGreen, unfocusedBorderColor = Color.LightGray),
-                            maxLines = if (entryType == 1) 15 else 3,
-                            singleLine = entryType == 0
+                var descriptionText by remember { mutableStateOf("") }
+                var isCalcLoading by remember { mutableStateOf(false) }
+                var calcResult by remember { mutableStateOf<FoodAnalysisResponse?>(null) }
+                var calcError by remember { mutableStateOf<String?>(null) }
+                val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.White)
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
                         )
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        Button(
-                            onClick = {
-                                if (textInput.isNotBlank()) {
-                                    android.widget.Toast.makeText(context, "API bağlantısı bekleniyor...", android.widget.Toast.LENGTH_SHORT).show()
-                                } else {
-                                    android.widget.Toast.makeText(context, "Lütfen giriş yapın.", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(60.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 52.dp, bottom = 120.dp, start = 24.dp, end = 24.dp)
+                    ) {
+                        // ── Başlık satırı ──
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Hesapla", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Kalori Hesapla",
+                                    fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1A1A1A)
+                                )
+                                Text(
+                                    "Ne yediğini yaz, yapay zeka hesaplasın",
+                                    fontSize = 13.sp, color = TextGray
+                                )
+                            }
+                            IconButton(onClick = {
+                                isManualEntryOpen = false
+                                descriptionText = ""
+                                calcResult = null
+                                calcError = null
+                            }) {
+                                Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = Color.DarkGray)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(28.dp))
+
+                        if (calcResult == null) {
+                            // ── Giriş Alanı ──
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = Color(0xFFF8F8F8),
+                                border = BorderStroke(1.5.dp, if (descriptionText.isNotBlank()) PrimaryGreen else Color(0xFFE0E0E0)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Filled.Edit,
+                                            contentDescription = null,
+                                            tint = PrimaryGreen,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "Ne yedin?",
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF1A1A1A),
+                                            fontSize = 15.sp
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    androidx.compose.foundation.text.BasicTextField(
+                                        value = descriptionText,
+                                        onValueChange = {
+                                            descriptionText = it
+                                            calcResult = null
+                                            calcError = null
+                                        },
+                                        modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                                        textStyle = androidx.compose.ui.text.TextStyle(
+                                            fontSize = 16.sp,
+                                            color = Color(0xFF1A1A1A),
+                                            lineHeight = 24.sp
+                                        ),
+                                        decorationBox = { inner ->
+                                            if (descriptionText.isEmpty()) {
+                                                Text(
+                                                    "Örn: 2 yumurtalı sahanda yumurta, 2 dilim tam buğday ekmeği, bir bardak süt",
+                                                    color = Color(0xFFBBBBBB),
+                                                    fontSize = 15.sp,
+                                                    lineHeight = 22.sp
+                                                )
+                                            }
+                                            inner()
+                                        }
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // İpucu chip'leri
+                            val tips = listOf("1 porsiyon", "ev yapımı", "yarım tabak", "büyük boy")
+                            androidx.compose.foundation.layout.Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                            ) {
+                                tips.forEach { tip ->
+                                    Surface(
+                                        shape = RoundedCornerShape(20.dp),
+                                        color = LightGreenBg,
+                                        modifier = Modifier.clickable {
+                                            if (descriptionText.isNotBlank() && !descriptionText.endsWith(" "))
+                                                descriptionText += " $tip"
+                                            else if (descriptionText.isBlank())
+                                                descriptionText = tip
+                                        }
+                                    ) {
+                                        Text(
+                                            "+ $tip",
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                            fontSize = 12.sp,
+                                            color = PrimaryGreen,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (calcError != null) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Surface(
+                                    color = Color(0xFFFFEBEE),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Filled.Warning, null, tint = Color(0xFFE53935), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(calcError!!, fontSize = 12.sp, color = Color(0xFFE53935))
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            // ── Hesapla Butonu ──
+                            Button(
+                                onClick = {
+                                    if (descriptionText.isBlank()) {
+                                        calcError = "Lütfen ne yediğinizi yazın."
+                                        return@Button
+                                    }
+                                    focusManager.clearFocus()
+                                    isCalcLoading = true
+                                    calcError = null
+                                    coroutineScope.launch {
+                                        try {
+                                            val token = SessionManager.token ?: ""
+                                            val chatReq = ChatRequest(
+                                                user_id = SessionManager.userId,
+                                                user_message = "Şu yemeğin kalori ve makro değerlerini hesapla, sadece JSON formatında döndür (başka hiçbir şey yazma): {\"food_name\": \"...\", \"calories\": 0, \"protein\": 0, \"fat\": 0, \"carbs\": 0}\n\nYemek: $descriptionText",
+                                                history = "",
+                                                boy_cm = 170f, kilo_kg = 70f, yas = 25, cinsiyet = "Belirtilmemiş",
+                                                bugunku_ogunler = emptyList()
+                                            )
+                                            if (token.isNotEmpty()) {
+                                                val resp = RetrofitClient.instance.chatWithAi("Bearer $token", chatReq)
+                                                val raw = resp.reply ?: ""
+                                                val jsonMatch = Regex("""\{[^\{\}]*\}""").find(raw)?.value
+                                                if (jsonMatch != null) {
+                                                    try {
+                                                        val gson = com.google.gson.Gson()
+                                                        data class SimpleCalResult(val food_name: String?, val calories: Double?, val protein: Double?, val fat: Double?, val carbs: Double?)
+                                                        val parsed = gson.fromJson(jsonMatch, SimpleCalResult::class.java)
+                                                        calcResult = FoodAnalysisResponse(
+                                                            food_name = parsed.food_name ?: descriptionText.take(40),
+                                                            calories = parsed.calories ?: 0.0,
+                                                            macros = Macros(
+                                                                protein = parsed.protein ?: 0.0,
+                                                                carbs = parsed.carbs ?: 0.0,
+                                                                fat = parsed.fat ?: 0.0
+                                                            ),
+                                                            portion = "1 porsiyon"
+                                                        )
+                                                    } catch (_: Exception) {
+                                                        val cal = Regex("""(\d+)\s*kcal""", RegexOption.IGNORE_CASE).find(raw)?.groupValues?.get(1)?.toDoubleOrNull() ?: 0.0
+                                                        calcResult = FoodAnalysisResponse(food_name = descriptionText.take(40), calories = cal, macros = Macros(0.0, 0.0, 0.0), portion = "1 porsiyon")
+                                                    }
+                                                } else {
+                                                    val cal = Regex("""(\d+)\s*kcal""", RegexOption.IGNORE_CASE).find(raw)?.groupValues?.get(1)?.toDoubleOrNull() ?: 0.0
+                                                    calcResult = FoodAnalysisResponse(food_name = descriptionText.take(40), calories = cal, macros = Macros(0.0, 0.0, 0.0), portion = "1 porsiyon")
+                                                }
+                                            } else {
+                                                calcError = "Giriş yapmanız gerekiyor."
+                                            }
+                                        } catch (e: Exception) {
+                                            calcError = "Hata: ${e.localizedMessage}"
+                                        } finally {
+                                            isCalcLoading = false
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().height(58.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (descriptionText.isNotBlank()) PrimaryGreen else Color(0xFFCCCCCC)
+                                ),
+                                enabled = !isCalcLoading
+                            ) {
+                                if (isCalcLoading) {
+                                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.5.dp)
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text("Hesaplanıyor...", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                } else {
+                                    Icon(Icons.Filled.Calculate, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Hesapla", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+                        } else {
+                            // ── Sonuç Kartı ──
+                            val res = calcResult!!
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = Color(0xFFF0FBF0),
+                                border = BorderStroke(1.5.dp, PrimaryGreen.copy(alpha = 0.3f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(20.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Filled.CheckCircle, null, tint = PrimaryGreen, modifier = Modifier.size(22.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            res.food_name,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 18.sp,
+                                            color = Color(0xFF1A1A1A),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    // Kalori büyük göster
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.Bottom
+                                    ) {
+                                        Text(
+                                            "${res.calories}",
+                                            fontSize = 52.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = PrimaryGreen
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("kcal", fontSize = 18.sp, color = TextGray, modifier = Modifier.padding(bottom = 10.dp))
+                                    }
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceEvenly
+                                    ) {
+                                        MacroChip("Protein", "${res.macros.protein.toInt()}g", Color(0xFF1565C0))
+                                        MacroChip("Yağ", "${res.macros.fat.toInt()}g", Color(0xFFE65100))
+                                        MacroChip("Karb", "${res.macros.carbs.toInt()}g", Color(0xFF6A1B9A))
+                                    }
+                                    if (!res.portion.isNullOrBlank() && res.portion != "1 porsiyon") {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text("Porsiyon: ${res.portion}", fontSize = 12.sp, color = TextGray, lineHeight = 18.sp)
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Öğüne ekle dropdown
+                            val mealOptions = listOf("Kahvaltı" to "breakfast", "Öğle" to "lunch", "Akşam" to "dinner", "Atıştırmalık" to "snack")
+                            Text("Hangi öğüne eklensin?", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = TextGray)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            androidx.compose.foundation.layout.Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                            ) {
+                                mealOptions.forEach { (label, key) ->
+                                    Button(
+                                        onClick = {
+                                            PersistenceManager.saveMealCalorie(key, PersistenceManager.getMealCalorie(key) + res.calories.toFloat())
+                                            coroutineScope.launch {
+                                                try {
+                                                    val token = SessionManager.token ?: ""
+                                                    if (token.isNotEmpty()) {
+                                                        RetrofitClient.instance.saveMeal(
+                                                            "Bearer $token",
+                                                            MealCreate(
+                                                                food_name = res.food_name,
+                                                                calories = res.calories.toFloat(),
+                                                                protein = res.macros.protein.toFloat(),
+                                                                fat = res.macros.fat.toFloat(),
+                                                                carbs = res.macros.carbs.toFloat()
+                                                            )
+                                                        )
+                                                    }
+                                                } catch (_: Exception) {}
+                                            }
+                                            android.widget.Toast.makeText(context, "${res.food_name} $label öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
+                                            isManualEntryOpen = false
+                                            descriptionText = ""
+                                            calcResult = null
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = LightGreenBg, contentColor = PrimaryGreen),
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
+                                    ) {
+                                        Text(label, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Tekrar hesapla
+                            TextButton(onClick = { calcResult = null; calcError = null }) {
+                                Icon(Icons.Filled.Refresh, null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Farklı bir şey gir", fontSize = 13.sp)
+                            }
                         }
                     }
                 }
             }
+
         }
     }
 }
@@ -2039,6 +2313,27 @@ fun DietarySetupScreen(navController: NavController, onSetupComplete: () -> Unit
 fun LogoAndTitle() { Image(painter = painterResource(id = R.drawable.app_logo), contentDescription = null, modifier = Modifier.size(100.dp)); Spacer(modifier = Modifier.height(16.dp)); Text(text = "Calorie Calculator", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.Black) }
 @Composable
 fun InputTextField(value: String, onValueChange: (String) -> Unit, label: String) { OutlinedTextField(value = value, onValueChange = onValueChange, label = { Text(text = label) }, shape = RoundedCornerShape(16.dp), singleLine = true, modifier = Modifier.fillMaxWidth(), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryGreen, unfocusedBorderColor = Color.LightGray)) }
+
+@Composable
+fun MacroChip(label: String, value: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = color.copy(alpha = 0.10f)
+        ) {
+            Text(
+                value,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 15.sp,
+                color = color
+            )
+        }
+        Spacer(modifier = Modifier.height(3.dp))
+        Text(label, fontSize = 11.sp, color = TextGray)
+    }
+}
+
 @Composable
 fun SignUpText(onSignUpClick: () -> Unit) { Row { Text(text = stringResource(R.string.no_account), color = TextGray); Text(text = stringResource(R.string.signup_title), color = PrimaryGreen, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onSignUpClick() }) } }
 @Composable
