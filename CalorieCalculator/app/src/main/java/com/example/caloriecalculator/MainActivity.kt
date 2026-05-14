@@ -200,12 +200,18 @@ fun MainScaffold(onLogout: () -> Unit) {
                     isAnalysisLoading = true
                     isCalculateMenuOpen = false
                     try {
+                        // Render cold-start için önce backend'i uyandır
+                        RetrofitClient.wakeUpBackend()
                         val imagePart = ImageUtils.uriToMultipart(uri, context)
                         if (imagePart != null) {
-                            analysisResult = RetrofitClient.instance.analyzeFood(imagePart)
+                            // AI için uzun timeout'lu instance kullan (3 dk)
+                            analysisResult = RetrofitClient.aiInstance.analyzeFood(imagePart)
                         }
                     } catch (e: Exception) {
-                        android.widget.Toast.makeText(context, "Hata: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
+                        val msg = if (e is java.net.SocketTimeoutException)
+                            "İstek zaman aşımına uğradi (GPT-4o meşgul). Tekrar deneyin."
+                        else "Hata: ${e.localizedMessage}"
+                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
                     } finally {
                         isAnalysisLoading = false
                     }
@@ -738,12 +744,19 @@ fun StatisticScreen() {
                     val eatenCal = PersistenceManager.getMealCalorie("breakfast") + PersistenceManager.getMealCalorie("lunch") + PersistenceManager.getMealCalorie("dinner") + PersistenceManager.getMealCalorie("snack")
                     val leftCal = (maxCal - eatenCal).toInt().coerceAtLeast(0).toString()
                     val restr = PersistenceManager.dietaryRestrictions.ifBlank { null }
-                    
-                    recipeResult = RetrofitClient.instance.getRecipeRecommendations(imagePart, textPart, leftCal, restr)
+
+                    // Render cold-start için önce backend'i uyandır
+                    RetrofitClient.wakeUpBackend()
+                    // AI için uzun timeout'lu instance kullan (3 dk)
+                    recipeResult = RetrofitClient.aiInstance.getRecipeRecommendations(imagePart, textPart, leftCal, restr)
                 } else {
                     errorMessage = "Lütfen önce bir fotoğraf çekin, seçin veya malzeme girin."
                 }
-            } catch (e: Exception) { errorMessage = e.localizedMessage }
+            } catch (e: java.net.SocketTimeoutException) {
+                errorMessage = "⏱ AI şefi çok meşgul, istek zaman aşımına uğradi. Lütfen birkaç saniye bekleyip tekrar deneyin."
+            } catch (e: Exception) {
+                errorMessage = e.localizedMessage ?: "Bilinmeyen hata"
+            }
             finally { isLoading = false }
         }
     }

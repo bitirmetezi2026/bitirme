@@ -381,10 +381,18 @@ object PersistenceManager {
 object RetrofitClient {
     private const val BASE_URL = "https://bitirme-g5gn.onrender.com/"
 
+    // Standart client — login/meals/water/exercises için
     private val client = okhttp3.OkHttpClient.Builder()
         .connectTimeout(90, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(90, java.util.concurrent.TimeUnit.SECONDS)
         .writeTimeout(90, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
+    // AI client — /analyze ve /recommend-recipes için (GPT-4o yavaş olabilir)
+    private val aiClient = okhttp3.OkHttpClient.Builder()
+        .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(180, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(180, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
     val instance: DiyetApi by lazy {
@@ -394,6 +402,27 @@ object RetrofitClient {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(DiyetApi::class.java)
+    }
+
+    // AI istekleri için ayrı instance (timeout 3 dk)
+    val aiInstance: DiyetApi by lazy {
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(aiClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(DiyetApi::class.java)
+    }
+
+    /** Render cold-start sorununu önlemek için backend'i önceden uyandırır. */
+    suspend fun wakeUpBackend() {
+        try {
+            val req = okhttp3.Request.Builder()
+                .url("${BASE_URL}")
+                .head()
+                .build()
+            client.newCall(req).execute().close()
+        } catch (_: Exception) { /* yoksay */ }
     }
 }
 
