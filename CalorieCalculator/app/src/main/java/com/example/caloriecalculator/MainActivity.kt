@@ -567,9 +567,9 @@ fun MainScaffold(onLogout: () -> Unit) {
                                                 bugunku_ogunler = emptyList()
                                             )
                                             if (token.isNotEmpty()) {
-                                                val resp = RetrofitClient.instance.chatWithAi(token, chatReq)
+                                                val resp = RetrofitClient.aiInstance.chatWithAi(token, chatReq)
                                                 val raw = resp.reply ?: ""
-                                                val jsonMatch = Regex("""\{[^\{\}]*\}""").find(raw)?.value
+                                                val jsonMatch = Regex("""\{[\s\S]*\}""").find(raw)?.value
                                                 if (jsonMatch != null) {
                                                     try {
                                                         val gson = com.google.gson.Gson()
@@ -613,7 +613,7 @@ fun MainScaffold(onLogout: () -> Unit) {
                                 if (isCalcLoading) {
                                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.5.dp)
                                     Spacer(modifier = Modifier.width(10.dp))
-                                    Text("Hesaplanıyor...", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("Yapay zeka şefi kalorileri hesaplıyor...", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                 } else {
                                     Icon(Icons.Filled.Calculate, null, tint = Color.White, modifier = Modifier.size(20.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
