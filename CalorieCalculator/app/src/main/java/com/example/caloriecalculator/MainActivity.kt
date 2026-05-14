@@ -78,6 +78,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.launch
 
 data class IngredientItem(val name: String, val amount: String)
+data class SimpleCalResult(val food_name: String?, val calories: Double?, val protein: Double?, val fat: Double?, val carbs: Double?)
 
 
 class MainActivity : AppCompatActivity() {
@@ -573,7 +574,6 @@ fun MainScaffold(onLogout: () -> Unit) {
                                                 if (jsonMatch != null) {
                                                     try {
                                                         val gson = com.google.gson.Gson()
-                                                        data class SimpleCalResult(val food_name: String?, val calories: Double?, val protein: Double?, val fat: Double?, val carbs: Double?)
                                                         val parsed = gson.fromJson(jsonMatch, SimpleCalResult::class.java)
                                                         calcResult = FoodAnalysisResponse(
                                                             food_name = parsed.food_name ?: descriptionText.take(40),
