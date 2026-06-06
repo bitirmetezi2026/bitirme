@@ -772,6 +772,9 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
     var showPersonalDialog by remember { mutableStateOf(false) }
     var showEmailDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showActivityDialog by remember { mutableStateOf(false) }
+    var showGoalDialog by remember { mutableStateOf(false) }
+    var showDietaryDialog by remember { mutableStateOf(false) }
 
     var nameInput by remember { mutableStateOf("") }
     var ageInput by remember { mutableStateOf("") }
@@ -779,6 +782,9 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
     var heightInput by remember { mutableStateOf("") }
     var weightInput by remember { mutableStateOf("") }
     var emailInput by remember { mutableStateOf("") }
+    var activityInput by remember { mutableStateOf("Hareketsiz") }
+    var goalInput by remember { mutableStateOf("Korumak") }
+    var targetWeightInput by remember { mutableStateOf("") }
 
     LazyColumn(modifier = Modifier.fillMaxSize().background(SoftWhite).padding(16.dp), contentPadding = PaddingValues(bottom = 80.dp)) {
         item { Text(stringResource(R.string.settings_title), fontSize = 28.sp, fontWeight = FontWeight.Bold); Spacer(modifier = Modifier.height(24.dp)) }
@@ -788,6 +794,9 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
         item { Spacer(modifier = Modifier.height(24.dp)) }
         item { SettingsSection(title = stringResource(R.string.personalization_section)) }
         item { SettingsItem(title = stringResource(R.string.height_weight), icon = Icons.Filled.Scale, onClick = { showPersonalDialog = true }) }
+        item { SettingsItem(title = "Hareket Seviyesi", icon = Icons.Filled.DirectionsRun, onClick = { showActivityDialog = true }) }
+        item { SettingsItem(title = "Hedef ve Kilo", icon = Icons.Filled.Flag, onClick = { showGoalDialog = true }) }
+        item { SettingsItem(title = "Diyet Tercihleri", icon = Icons.Filled.Restaurant, onClick = { showDietaryDialog = true }) }
         item { Spacer(modifier = Modifier.height(24.dp)) }
         item { SettingsSection(title = stringResource(R.string.general_section)) }
         item { SettingsItem(title = stringResource(R.string.language), subtitle = stringResource(R.string.current_language), icon = Icons.Filled.Language, onClick = { showLanguageDialog = true }) }
@@ -936,6 +945,96 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
                 }
             },
             confirmButton = { }
+        )
+    }
+
+    if (showActivityDialog) {
+        val activities = listOf("Hareketsiz", "Az Aktif", "Orta Aktif", "Çok Aktif")
+        AlertDialog(
+            onDismissRequest = { showActivityDialog = false },
+            title = { Text("Hareket Seviyesi") },
+            text = {
+                Column {
+                    activities.forEach { level ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { activityInput = level }) {
+                            RadioButton(selected = activityInput == level, onClick = { activityInput = level })
+                            Text(level)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val token = SessionManager.token
+                    if (!token.isNullOrEmpty()) {
+                        coroutineScope.launch {
+                            try {
+                                RetrofitClient.instance.updateUserInfo(token, UserUpdate(activity_level = activityInput))
+                                showActivityDialog = false
+                            } catch(e:Exception){}
+                        }
+                    }
+                }) { Text("Kaydet") }
+            }
+        )
+    }
+
+    if (showGoalDialog) {
+        val goals = listOf("Kilo Vermek", "Kilo Almak", "Korumak")
+        AlertDialog(
+            onDismissRequest = { showGoalDialog = false },
+            title = { Text("Hedef ve Kilo") },
+            text = {
+                Column {
+                    goals.forEach { goal ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { goalInput = goal }) {
+                            RadioButton(selected = goalInput == goal, onClick = { goalInput = goal })
+                            Text(goal)
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    if (goalInput != "Korumak") {
+                        OutlinedTextField(value = targetWeightInput, onValueChange = { targetWeightInput = it }, label = { Text("Hedef Kilo (kg)") })
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val token = SessionManager.token
+                    if (!token.isNullOrEmpty()) {
+                        coroutineScope.launch {
+                            try {
+                                RetrofitClient.instance.updateUserInfo(token, UserUpdate(hedef = goalInput, hedef_kilo = targetWeightInput.toFloatOrNull()))
+                                showGoalDialog = false
+                            } catch(e:Exception){}
+                        }
+                    }
+                }) { Text("Kaydet") }
+            }
+        )
+    }
+
+    if (showDietaryDialog) {
+        var dietText by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showDietaryDialog = false },
+            title = { Text("Diyet Tercihleri") },
+            text = {
+                OutlinedTextField(value = dietText, onValueChange = { dietText = it }, label = { Text("Örn: Vegan, Laktozsuz") })
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val token = SessionManager.token
+                    if (!token.isNullOrEmpty()) {
+                        coroutineScope.launch {
+                            try {
+                                RetrofitClient.instance.updateUserInfo(token, UserUpdate(dietary_restrictions = dietText))
+                                showDietaryDialog = false
+                            } catch(e:Exception){}
+                        }
+                    }
+                }) { Text("Kaydet") }
+            }
         )
     }
 }

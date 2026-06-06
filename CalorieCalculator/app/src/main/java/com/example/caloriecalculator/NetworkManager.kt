@@ -62,7 +62,12 @@ data class UserUpdate(
     val yas: Int? = null,
     val cinsiyet: String? = null,
     val language: String? = null,
-    val email: String? = null
+    val email: String? = null,
+    val activity_level: String? = null,
+    val hedef: String? = null,
+    val hedef_hiz: String? = null,
+    val hedef_kilo: Float? = null,
+    val dietary_restrictions: String? = null
 )
 
 data class WaterCreate(
