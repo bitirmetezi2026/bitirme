@@ -30,7 +30,7 @@ out.log
 my_build_err.txt
 
 # Android Studio (Eylül'ün klasörü ayrı repoda olmalı)
-CalorieCalculator/
+# CalorieCalculator/
 
 # Dila'nın eski ayrı klasörü (artık kök dizine taşındı)
-bitirme-main/
+# bitirme-main/

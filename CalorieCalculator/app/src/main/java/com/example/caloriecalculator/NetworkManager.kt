@@ -141,6 +141,43 @@ data class ServerRecipe(
     val image_url: String?
 )
 
+data class UserProfileResponse(
+    val id: Int,
+    val email: String,
+    val full_name: String?,
+    val boy_cm: Float?,
+    val kilo_kg: Float?,
+    val yas: Int?,
+    val cinsiyet: String?,
+    val language: String?,
+    val activity_level: String?,
+    val hedef: String?,
+    val hedef_hiz: String?,
+    val hedef_kilo: Float?,
+    val dietary_restrictions: String?
+)
+
+data class DailySummaryResponse(
+    val total_calories_eaten: Float,
+    val total_protein: Float,
+    val total_fat: Float,
+    val total_carbs: Float,
+    val total_water_ml: Int,
+    val total_calories_burned: Float,
+    val target_calories: Float
+)
+
+data class FoodCalorieResponse(
+    val id: Int,
+    val food_name: String,
+    val calories_per_serving: Float,
+    val protein: Float,
+    val fat: Float,
+    val carbs: Float,
+    val serving_description: String?,
+    val category: String?
+)
+
 // --- API ARAYÜZÜ ---
 interface DiyetApi {
     @POST("users/")
@@ -209,6 +246,29 @@ interface DiyetApi {
 
     @retrofit2.http.GET("recipes/")
     suspend fun getRecipes(): List<ServerRecipe>
+
+    @retrofit2.http.DELETE("meals/{meal_id}")
+    suspend fun deleteMeal(
+        @retrofit2.http.Header("Authorization") token: String,
+        @retrofit2.http.Path("meal_id") mealId: Int
+    ): okhttp3.ResponseBody
+
+    @retrofit2.http.GET("users/me/")
+    suspend fun getUserProfile(
+        @retrofit2.http.Header("Authorization") token: String
+    ): UserProfileResponse
+
+    @retrofit2.http.GET("daily-summary/")
+    suspend fun getDailySummary(
+        @retrofit2.http.Header("Authorization") token: String,
+        @Query("date") date: String
+    ): DailySummaryResponse
+
+    @retrofit2.http.GET("food-calories/")
+    suspend fun getFoodCalories(
+        @retrofit2.http.Header("Authorization") token: String,
+        @Query("query") query: String? = null
+    ): List<FoodCalorieResponse>
 }
 
 

@@ -141,3 +141,37 @@ class RecipeOut(BaseModel):
     class Config:
         orm_mode = True
         from_attributes = True
+
+
+# ========================
+# YEMEK KALORİ TABLOSU ŞEMALARI
+# ========================
+class FoodCalorieCreate(BaseModel):
+    food_name: str
+    calories_per_serving: float
+    protein: float = 0.0
+    fat: float = 0.0
+    carbs: float = 0.0
+    serving_description: Optional[str] = None
+    category: Optional[str] = None
+
+class FoodCalorieResponse(FoodCalorieCreate):
+    id: int
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+
+# ========================
+# GÜNLÜK ÖZET ŞEMASI
+# ========================
+class DailySummaryResponse(BaseModel):
+    total_calories_eaten: float
+    total_protein: float
+    total_fat: float
+    total_carbs: float
+    total_water_ml: int
+    total_calories_burned: float
+    target_calories: float
+

@@ -101,3 +101,17 @@ class RecipeDB(Base):
     steps = Column(String, nullable=True) # Tarifin hazırlanış adımları
     image_url = Column(String, nullable=True) # Resim linki
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class FoodCalorie(Base):
+    __tablename__ = "food_calories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    food_name = Column(String, unique=True, index=True)
+    calories_per_serving = Column(Float)
+    protein = Column(Float, default=0.0)
+    fat = Column(Float, default=0.0)
+    carbs = Column(Float, default=0.0)
+    serving_description = Column(String, nullable=True)
+    category = Column(String, nullable=True)
+

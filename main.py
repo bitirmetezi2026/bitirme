@@ -19,11 +19,85 @@ import utils
 import models
 import schemas
 from database import engine, SessionLocal
+import difflib
+import re
 
 # =============================================
 # KAAN'IN RAG YAPAY ZEKA GRAFİĞİNİ İMPORT ET
 # =============================================
 from graph.graph import app as rag_graph
+
+# =============================================
+# YARDIMCI FONKSİYONLAR (Gıda Kalori Lookup & Ölçekleme)
+# =============================================
+
+def find_closest_food(food_name: str, db: Session, threshold: float = 0.6):
+    """
+    food_calories tablosunda en yakın eşleşen yemeği bulur.
+    SequenceMatcher kullanarak fuzzy arama yapar.
+    """
+    food_name_clean = food_name.strip().lower()
+    exact_match = db.query(models.FoodCalorie).filter(
+        models.FoodCalorie.food_name.ilike(food_name_clean)
+    ).first()
+    if exact_match:
+        return exact_match
+
+    all_foods = db.query(models.FoodCalorie).all()
+    best_match = None
+    best_score = 0.0
+    
+    for f in all_foods:
+        score = difflib.SequenceMatcher(None, food_name_clean, f.food_name.lower()).ratio()
+        if score > best_score:
+            best_score = score
+            best_match = f
+            
+    if best_score >= threshold:
+        print(f"Fuzzy matched '{food_name}' to '{best_match.food_name}' (score: {best_score:.2f})")
+        return best_match
+        
+    return None
+
+def extract_grams(text: str) -> float | None:
+    if not text:
+        return None
+    match = re.search(r'(\d+(?:\.\d+)?)\s*(?:g|gr|gram|grams)\b', text, re.IGNORECASE)
+    if match:
+        return float(match.group(1))
+    return None
+
+def scale_nutrition(db_food: models.FoodCalorie, predicted_portion: str) -> dict:
+    """
+    Veritabanındaki yemek değerlerini AI'ın tahmin ettiği porsiyon büyüklüğüne göre ölçekler.
+    """
+    calories = db_food.calories_per_serving
+    protein = db_food.protein or 0.0
+    fat = db_food.fat or 0.0
+    carbs = db_food.carbs or 0.0
+    
+    db_grams = extract_grams(db_food.serving_description)
+    pred_grams = extract_grams(predicted_portion)
+    
+    ratio = 1.0
+    if db_grams and pred_grams:
+        ratio = pred_grams / db_grams
+        ratio = max(0.1, min(10.0, ratio))
+    else:
+        # Porsiyon çarpanı kontrolü: "2 adet", "3 dilim" vb.
+        match = re.search(r'\b(\d+(?:\.\d+)?)\s*(?:adet|porsiyon|tabak|dilim|fincan|bardak|kase)\b', predicted_portion, re.IGNORECASE)
+        if match:
+            ratio = float(match.group(1))
+            
+    return {
+        "food_name": db_food.food_name,
+        "calories": round(calories * ratio, 1),
+        "protein": round(protein * ratio, 1),
+        "fat": round(fat * ratio, 1),
+        "carbs": round(carbs * ratio, 1),
+        "portion": predicted_portion,
+        "note": f"Veritabanından çekildi ({db_food.food_name} - {db_food.serving_description} x {ratio:.2f})"
+    }
 
 # =============================================
 # UYGULAMA KURULUMU
@@ -174,6 +248,11 @@ def update_user_me(
     db.refresh(current_user)
     return current_user
 
+@app.get("/users/me/", response_model=schemas.UserResponse)
+def get_user_profile(current_user: models.User = Depends(get_current_user)):
+    """Giriş yapmış kullanıcının profil detaylarını döner."""
+    return current_user
+
 # =============================================
 # 4. KULLANICI LİSTELE
 # =============================================
@@ -227,6 +306,25 @@ def read_meals_by_date(
         models.Meal.created_at < next_day
     ).order_by(models.Meal.created_at.asc()).all()
     return meals
+
+@app.delete("/meals/{meal_id}", status_code=status.HTTP_200_OK)
+def delete_meal(
+    meal_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Kullanıcının girdiği bir yemeği siler."""
+    meal = db.query(models.Meal).filter(
+        models.Meal.id == meal_id,
+        models.Meal.user_id == current_user.id
+    ).first()
+    
+    if not meal:
+        raise HTTPException(status_code=404, detail="Yemek bulunamadı.")
+        
+    db.delete(meal)
+    db.commit()
+    return {"message": "Yemek başarıyla silindi."}
 
 # =============================================
 # 6. SU TAKİBİ
@@ -437,8 +535,11 @@ def chat_with_ai(
 # =============================================
 
 @app.post("/analyze")
-async def analyze_food(file: UploadFile = File(...)):
-    """Fotoğraftan yemek tanıma - Doğrudan LangGraph entegrasyonu"""
+async def analyze_food(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Fotoğraftan yemek tanıma - Doğrudan LangGraph entegrasyonu ve DB lookup"""
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Lutfen sadece resim (image) dosyasi yukleyin.")
         
@@ -452,10 +553,28 @@ async def analyze_food(file: UploadFile = File(...)):
         analysis = result_state.get("food_analysis")
         
         if analysis:
-            if hasattr(analysis, "model_dump"):
-                return analysis.model_dump()
+            data = analysis.model_dump() if hasattr(analysis, "model_dump") else analysis.dict()
+            food_name = data.get("food_name")
+            portion = data.get("portion")
+            
+            # Veritabanında ara
+            db_food = find_closest_food(food_name, db)
+            if db_food:
+                scaled = scale_nutrition(db_food, portion)
+                return {
+                    "food_name": scaled["food_name"],
+                    "portion": scaled["portion"],
+                    "calories": scaled["calories"],
+                    "macros": {
+                        "protein": scaled["protein"],
+                        "fat": scaled["fat"],
+                        "carbs": scaled["carbs"]
+                    },
+                    "note": scaled["note"]
+                }
             else:
-                return analysis.dict()
+                data["note"] = "AI tahmini (Veritabanında bulunamadı)"
+                return data
                 
         return {"error": "Analiz tamamlanamadi. Lutfen tekrar deneyin."}
     except Exception as e:
@@ -468,6 +587,59 @@ async def analyze_food(file: UploadFile = File(...)):
             "carbs": 0,
             "note": str(e)
         }
+
+
+class TextAnalyzeRequest(schemas.BaseModel):
+    text: str
+
+@app.post("/analyze/text")
+def analyze_food_text(
+    req: TextAnalyzeRequest,
+    db: Session = Depends(get_db)
+):
+    """Metinden yemek tanıma - Diyetisyen Agent + DB lookup"""
+    text = req.text
+    from agents.dietitian_agent import run_dietitian_agent
+    
+    try:
+        # Diyetisyen ajanı çalıştırıp yemek adı ve porsiyonu tahmin et
+        analysis = run_dietitian_agent(f"Kullanıcı metin olarak girdi: {text}", feedback=None)
+        
+        if analysis:
+            data = analysis.model_dump() if hasattr(analysis, "model_dump") else analysis.dict()
+            food_name = data.get("food_name")
+            portion = data.get("portion")
+            
+            # Veritabanında ara
+            db_food = find_closest_food(food_name, db)
+            if db_food:
+                scaled = scale_nutrition(db_food, portion)
+                return {
+                    "food_name": scaled["food_name"],
+                    "portion": scaled["portion"],
+                    "calories": scaled["calories"],
+                    "macros": {
+                        "protein": scaled["protein"],
+                        "fat": scaled["fat"],
+                        "carbs": scaled["carbs"]
+                    },
+                    "note": scaled["note"]
+                }
+            else:
+                data["note"] = "AI tahmini (Veritabanında bulunamadı)"
+                return data
+                
+        return {"error": "Analiz tamamlanamadi."}
+    except Exception as e:
+        print(f"⚠️ Metin Analiz Hatası: {e}")
+        return {
+            "food_name": text[:40],
+            "portion": "1 porsiyon",
+            "calories": 150.0,
+            "macros": {"protein": 5.0, "fat": 5.0, "carbs": 15.0},
+            "note": f"Varsayılan değerler (Hata: {str(e)})"
+        }
+
 
 # =============================================
 # 9. TARİF ÖNERİSİ (NE YESEM?)
@@ -502,6 +674,156 @@ async def forward_to_ai_agent(
     except Exception as e:
         print(f"Error processing recipe request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/daily-summary/", response_model=schemas.DailySummaryResponse)
+def get_daily_summary(
+    date: str = Query(..., description="Tarih formatı: YYYY-MM-DD"),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Belirli bir gün için kalori, su, egzersiz toplamlarını ve kalori hedefini döner."""
+    from datetime import datetime, timedelta
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d")
+        next_day = target_date + timedelta(days=1)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Tarih formatı hatalı. YYYY-MM-DD kullanın.")
+        
+    # Yemekler
+    meals = db.query(models.Meal).filter(
+        models.Meal.user_id == current_user.id,
+        models.Meal.created_at >= target_date,
+        models.Meal.created_at < next_day
+    ).all()
+    
+    total_calories_eaten = sum(m.calories for m in meals)
+    total_protein = sum(m.protein or 0.0 for m in meals)
+    total_fat = sum(m.fat or 0.0 for m in meals)
+    total_carbs = sum(m.carbs or 0.0 for m in meals)
+    
+    # Su
+    water_logs = db.query(models.WaterLog).filter(
+        models.WaterLog.user_id == current_user.id,
+        models.WaterLog.created_at >= target_date,
+        models.WaterLog.created_at < next_day
+    ).all()
+    total_water_ml = sum(w.amount_ml for w in water_logs)
+    
+    # Egzersiz
+    exercise_logs = db.query(models.ExerciseLog).filter(
+        models.ExerciseLog.user_id == current_user.id,
+        models.ExerciseLog.created_at >= target_date,
+        models.ExerciseLog.created_at < next_day
+    ).all()
+    total_calories_burned = sum(e.calories_burned for e in exercise_logs)
+    
+    # Kalori Hedefi
+    boy = current_user.boy_cm or 170.0
+    kilo = current_user.kilo_kg or 70.0
+    yas = current_user.yas or 30
+    cinsiyet = current_user.cinsiyet or "Belirtilmemiş"
+    activity_level = current_user.activity_level or "Hareketsiz"
+    hedef = current_user.hedef or "Korumak"
+    hedef_hiz = current_user.hedef_hiz or ""
+    
+    bmr = 10.0 * kilo + 6.25 * boy - 5.0 * yas
+    if cinsiyet.lower() == "erkek":
+        bmr += 5.0
+    else:
+        bmr -= 161.0
+        
+    activity_multiplier = 1.2
+    if activity_level == "Az Aktif":
+        activity_multiplier = 1.375
+    elif activity_level == "Orta Aktif":
+        activity_multiplier = 1.55
+    elif activity_level == "Çok Aktif":
+        activity_multiplier = 1.725
+        
+    tdee = bmr * activity_multiplier
+    target_cal = tdee
+    
+    if hedef == "Kilo Vermek":
+        deficit = 550.0
+        if "0.25" in hedef_hiz:
+            deficit = 275.0
+        elif "1.0" in hedef_hiz:
+            deficit = 1100.0
+        target_cal -= deficit
+    elif hedef == "Kilo Almak":
+        surplus = 400.0
+        if "Kas Odaklı" in hedef_hiz:
+            surplus = 250.0
+        elif "Hızlı" in hedef_hiz:
+            surplus = 700.0
+        target_cal += surplus
+        
+    min_cal = 1500.0 if cinsiyet.lower() == "erkek" else 1200.0
+    if target_cal < min_cal:
+        target_cal = min_cal
+        
+    return {
+        "total_calories_eaten": round(total_calories_eaten, 1),
+        "total_protein": round(total_protein, 1),
+        "total_fat": round(total_fat, 1),
+        "total_carbs": round(total_carbs, 1),
+        "total_water_ml": total_water_ml,
+        "total_calories_burned": round(total_calories_burned, 1),
+        "target_calories": round(target_cal, 1)
+    }
+
+@app.get("/food-calories/", response_model=List[schemas.FoodCalorieResponse])
+def get_food_calories(
+    query: Optional[str] = Query(None, description="Arama sorgusu (yemek adı)"),
+    db: Session = Depends(get_db)
+):
+    """Veritabanındaki yemek ve kalori listesini döner, dilenirse sorgulanabilir."""
+    if query:
+        return db.query(models.FoodCalorie).filter(
+            models.FoodCalorie.food_name.ilike(f"%{query}%")
+        ).all()
+    return db.query(models.FoodCalorie).all()
+
+@app.post("/food-calories/populate")
+def populate_food_calories_table(db: Session = Depends(get_db)):
+    """Yemek kalorileri tablosunu başlangıç verisi ile doldurur."""
+    from populate_food_calories import foods_data
+    count_added = 0
+    count_updated = 0
+    for item in foods_data:
+        existing = db.query(models.FoodCalorie).filter(models.FoodCalorie.food_name == item["food_name"]).first()
+        if existing:
+            existing.calories_per_serving = item["calories_per_serving"]
+            existing.protein = item["protein"]
+            existing.fat = item["fat"]
+            existing.carbs = item["carbs"]
+            existing.serving_description = item["serving_description"]
+            existing.category = item["category"]
+            count_updated += 1
+        else:
+            new_food = models.FoodCalorie(**item)
+            db.add(new_food)
+            count_added += 1
+    db.commit()
+    return {"status": "success", "message": f"Added {count_added} new foods, updated {count_updated}."}
+
+@app.get("/chat-history/")
+def get_chat_history_endpoint(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Kullanıcının geçmiş sohbet kayıtlarını döner."""
+    chats = db.query(models.ChatLog).filter(
+        models.ChatLog.user_id == current_user.id
+    ).order_by(models.ChatLog.created_at.asc()).all()
+    return [
+        {
+            "id": c.id,
+            "user_message": c.user_message,
+            "bot_response": c.bot_response,
+            "created_at": c.created_at.isoformat() if c.created_at else None
+        } for c in chats
+    ]
 
 # =============================================
 # SUNUCU BAŞLATMA

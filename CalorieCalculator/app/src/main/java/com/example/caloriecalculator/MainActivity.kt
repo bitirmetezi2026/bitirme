@@ -376,7 +376,9 @@ fun MainScaffold(onLogout: () -> Unit) {
                                                     carbs = carbs
                                                 ))
                                             }
-                                        } catch (e: Exception) { /* Sessizce yoksay */ }
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("CalorieCalculator", "Yemek kaydedilemedi: ${e.localizedMessage}", e)
+                                        }
                                     }
                                     
                                     android.widget.Toast.makeText(context, "$foodName $label öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
@@ -702,7 +704,9 @@ fun MainScaffold(onLogout: () -> Unit) {
                                                             )
                                                         )
                                                     }
-                                                } catch (_: Exception) {}
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("CalorieCalculator", "Manuel yemek kaydedilemedi: ${e.localizedMessage}", e)
+                                                }
                                             }
                                             android.widget.Toast.makeText(context, "${res.food_name} $label öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
                                             isManualEntryOpen = false
@@ -859,7 +863,13 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
                             ))
                             if (nameInput.isNotBlank()) {
                                 SessionManager.userName = nameInput
+                                PersistenceManager.savedUserName = nameInput
                             }
+                            ageInput.toIntOrNull()?.let { PersistenceManager.yas = it }
+                            if (genderInput.isNotBlank()) {
+                                PersistenceManager.cinsiyet = genderInput
+                            }
+                            PersistenceManager.dataVersion.intValue++
                             showNameDialog = false 
                         } catch(e:Exception){ 
                             Toast.makeText(context, "${context.getString(R.string.error_message)}: ${e.localizedMessage}", Toast.LENGTH_SHORT).show() 
@@ -885,6 +895,9 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
                     coroutineScope.launch { 
                         try { 
                             RetrofitClient.instance.updateUserInfo(token, UserUpdate(boy_cm = heightInput.toFloatOrNull(), kilo_kg = weightInput.toFloatOrNull()))
+                            heightInput.toFloatOrNull()?.let { PersistenceManager.boyCm = it }
+                            weightInput.toFloatOrNull()?.let { PersistenceManager.kiloKg = it }
+                            PersistenceManager.dataVersion.intValue++
                             showPersonalDialog = false 
                         } catch(e:Exception){ 
                             Toast.makeText(context, "${context.getString(R.string.error_message)}: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
@@ -929,7 +942,13 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
                         AppCompatDelegate.setApplicationLocales(localeList)
                         val token = SessionManager.token
                         if (!token.isNullOrEmpty()) {
-                            coroutineScope.launch { try { RetrofitClient.instance.updateUserInfo(token, UserUpdate(language = "English")) } catch(e:Exception){} }
+                            coroutineScope.launch {
+                                try {
+                                    RetrofitClient.instance.updateUserInfo(token, UserUpdate(language = "English"))
+                                } catch(e: Exception) {
+                                    android.util.Log.e("CalorieCalculator", "Language update sync failed: ${e.localizedMessage}", e)
+                                }
+                            }
                         }
                         showLanguageDialog = false
                     }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.english)) }
@@ -938,7 +957,13 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
                         AppCompatDelegate.setApplicationLocales(localeList)
                         val token = SessionManager.token
                         if (!token.isNullOrEmpty()) {
-                            coroutineScope.launch { try { RetrofitClient.instance.updateUserInfo(token, UserUpdate(language = "Turkish")) } catch(e:Exception){} }
+                            coroutineScope.launch {
+                                try {
+                                    RetrofitClient.instance.updateUserInfo(token, UserUpdate(language = "Turkish"))
+                                } catch(e: Exception) {
+                                    android.util.Log.e("CalorieCalculator", "Language update sync failed: ${e.localizedMessage}", e)
+                                }
+                            }
                         }
                         showLanguageDialog = false
                     }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.turkish)) }
@@ -970,8 +995,14 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
                         coroutineScope.launch {
                             try {
                                 RetrofitClient.instance.updateUserInfo(token, UserUpdate(activity_level = activityInput))
+                                if (activityInput.isNotBlank()) {
+                                    PersistenceManager.activityLevel = activityInput
+                                }
+                                PersistenceManager.dataVersion.intValue++
                                 showActivityDialog = false
-                            } catch(e:Exception){}
+                            } catch(e:Exception){
+                                Toast.makeText(context, "Hata: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 }) { Text("Kaydet") }
@@ -1005,8 +1036,15 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
                         coroutineScope.launch {
                             try {
                                 RetrofitClient.instance.updateUserInfo(token, UserUpdate(hedef = goalInput, hedef_kilo = targetWeightInput.toFloatOrNull()))
+                                if (goalInput.isNotBlank()) {
+                                    PersistenceManager.hedef = goalInput
+                                }
+                                targetWeightInput.toFloatOrNull()?.let { PersistenceManager.hedefKilo = it }
+                                PersistenceManager.dataVersion.intValue++
                                 showGoalDialog = false
-                            } catch(e:Exception){}
+                            } catch(e:Exception){
+                                Toast.makeText(context, "Hata: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 }) { Text("Kaydet") }
@@ -1029,8 +1067,12 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
                         coroutineScope.launch {
                             try {
                                 RetrofitClient.instance.updateUserInfo(token, UserUpdate(dietary_restrictions = dietText))
+                                PersistenceManager.dietaryRestrictions = dietText
+                                PersistenceManager.dataVersion.intValue++
                                 showDietaryDialog = false
-                            } catch(e:Exception){}
+                            } catch(e:Exception){
+                                Toast.makeText(context, "Hata: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 }) { Text("Kaydet") }
@@ -1499,7 +1541,9 @@ fun StatisticScreen() {
                                                     calories = recipeCalories
                                                 ))
                                             }
-                                        } catch (e: Exception) { /* Sessizce yoksay */ }
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("CalorieCalculator", "Tarif yemeği kaydedilemedi: ${e.localizedMessage}", e)
+                                        }
                                     }
                                     
                                     android.widget.Toast.makeText(context, "$recipeName $label öğününe eklendi!", android.widget.Toast.LENGTH_SHORT).show()
@@ -1790,7 +1834,9 @@ fun HomeScreen() {
                 RetrofitClient.instance.getExercisesByDate(token, today)
             }
             exerciseList = loaded.map { ExerciseEntry(it.exercise_type, it.minutes, it.calories_burned.toInt()) }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            android.util.Log.e("CalorieCalculator", "Egzersizler yüklenemedi: ${e.localizedMessage}", e)
+        }
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize().background(SoftWhite).padding(horizontal = 16.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)) {
@@ -1845,7 +1891,9 @@ fun HomeScreen() {
                                     calories_burned = entry.caloriesBurned.toFloat()
                                 )
                             )
-                        } catch (_: Exception) {}
+                        } catch (e: Exception) {
+                            android.util.Log.e("CalorieCalculator", "Egzersiz kaydedilemedi: ${e.localizedMessage}", e)
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -2491,10 +2539,6 @@ fun ExerciseCard(
         "Tırmanma"   to 8.0f
     )
 
-    // Lottie — Snap frame: 0f = gevşek kol (spor yok), 1f = sıkılmış kol (spor var)
-    // Döngüsel animasyon YOK — sabit kare gösterimi
-    val muscleComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.muscle))
-
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
@@ -2506,14 +2550,21 @@ fun ExerciseCard(
             // ── BAŞLIK SATIRI ──
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(60.dp), contentAlignment = Alignment.Center) {
-                    if (muscleComposition != null) {
-                        LottieAnimation(
-                            composition = muscleComposition!!,
-                            // progress=0f → kare 0 (gevşek), progress=1f → kare 84 (sıkılmış)
-                            progress = { if (hasExercise) 1f else 0f },
-                            modifier = Modifier.size(60.dp)
+                    val muscleScale by androidx.compose.animation.core.animateFloatAsState(
+                        targetValue = if (hasExercise) 1.2f else 0.8f,
+                        animationSpec = androidx.compose.animation.core.spring(
+                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
                         )
-                    }
+                    )
+                    Text(
+                        text = "💪",
+                        fontSize = 32.sp,
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = muscleScale
+                            scaleY = muscleScale
+                        }
+                    )
                 }
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -2715,7 +2766,9 @@ fun DaySummaryCard(exerciseList: List<ExerciseEntry>) {
             meals = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 RetrofitClient.instance.getMealsByDate(token, today)
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            android.util.Log.e("CalorieCalculator", "Günün özeti yemekleri yüklenemedi: ${e.localizedMessage}", e)
+        }
     }
 
     Card(
@@ -2849,7 +2902,7 @@ fun InteractiveWaterCard(modifier: Modifier = Modifier) {
                         RetrofitClient.instance.addWater(token, WaterCreate(250))
                     }
                 } catch (e: Exception) {
-                    // Sessizce hatayı yoksay
+                    android.util.Log.e("CalorieCalculator", "Su ekleme hatası: ${e.localizedMessage}", e)
                 } finally {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         isLoading = false
@@ -2910,31 +2963,19 @@ fun InteractiveWaterCard(modifier: Modifier = Modifier) {
                         Box(modifier = Modifier.size(60.dp).graphicsLayer { scaleX = glowScale; scaleY = glowScale }.clip(CircleShape).background(Color(0xFFFFF59D).copy(alpha = 0.6f)))
                     }
                     
-                    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.plant_animation))
-                    
-                    // Smooth animated progress: her su bardağında 0.0 -> 1.0 arası pürüzsüzce ilerler
-                    val animatedLottieProgress by androidx.compose.animation.core.animateFloatAsState(
-                        targetValue = progress, // progress = (waterGlasses / 8).coerceIn(0f, 1f)
-                        animationSpec = androidx.compose.animation.core.spring(
-                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                    // Fallback: Lottie yüklenene kadar emoji göster
+                    androidx.compose.animation.Crossfade(
+                        targetState = plantIcon,
+                        animationSpec = androidx.compose.animation.core.tween(800)
+                    ) { icon ->
+                        Text(
+                            text = icon,
+                            fontSize = 42.sp,
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = plantScale
+                                scaleY = plantScale
+                            }
                         )
-                    )
-                    
-                    if (composition != null) {
-                        LottieAnimation(
-                            composition = composition!!,
-                            progress = { animatedLottieProgress },
-                            modifier = Modifier.size(80.dp)
-                        )
-                    } else {
-                        // Fallback: Lottie yüklenene kadar emoji göster
-                        androidx.compose.animation.Crossfade(
-                            targetState = plantIcon,
-                            animationSpec = androidx.compose.animation.core.tween(800)
-                        ) { icon ->
-                            Text(text = icon, fontSize = 42.sp)
-                        }
                     }
                 }
                 
@@ -3060,6 +3101,8 @@ fun MonthlyBarChartPager(onBarClick: (String, Float, String) -> Unit) {
 }
 @Composable
 fun DailyMealDetailCard(selectedDate: String) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var isExpanded by remember { mutableStateOf(false) }
     var meals by remember { mutableStateOf<List<MealResponse>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
@@ -3152,6 +3195,59 @@ fun DailyMealDetailCard(selectedDate: String) {
                                         }
                                     }
                                     Text("${meal.calories.toInt()} kcal", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                try {
+                                                    val token = SessionManager.token ?: ""
+                                                    if (token.isNotEmpty()) {
+                                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                                            RetrofitClient.instance.deleteMeal(token, meal.id)
+                                                        }
+                                                        
+                                                        // Eşleşen kategoriyi bulup yerel kaloriyi azalt (Sadece bugün ise)
+                                                        if (isToday) {
+                                                            val category = when {
+                                                                meal.created_at != null -> {
+                                                                    try {
+                                                                        val hourPart = meal.created_at.split("T").getOrNull(1)?.split(":")?.firstOrNull()?.toIntOrNull()
+                                                                        if (hourPart != null) {
+                                                                            val localHour = (hourPart + 3) % 24
+                                                                            when (localHour) {
+                                                                                in 5..10 -> "breakfast"
+                                                                                in 11..16 -> "lunch"
+                                                                                in 17..22 -> "dinner"
+                                                                                else -> "snack"
+                                                                            }
+                                                                        } else "snack"
+                                                                    } catch (e: Exception) { "snack" }
+                                                                }
+                                                                else -> "snack"
+                                                            }
+                                                            val currentCals = PersistenceManager.getMealCalorie(category)
+                                                            val newCals = (currentCals - meal.calories).coerceAtLeast(0f)
+                                                            PersistenceManager.saveMealCalorie(category, newCals)
+                                                        }
+                                                        
+                                                        // Listeyi güncelle
+                                                        meals = meals.filter { it.id != meal.id }
+                                                        Toast.makeText(context, "${meal.food_name} silindi.", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(context, "Silme hatası: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Delete,
+                                            contentDescription = "Sil",
+                                            tint = Color.Red.copy(alpha = 0.7f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
                                 if (index < meals.lastIndex) Divider(color = Color(0xFFF5F5F5))
                             }
