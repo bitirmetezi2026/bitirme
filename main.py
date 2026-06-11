@@ -6,7 +6,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Q
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from jose import jwt, JWTError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime
