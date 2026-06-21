@@ -451,6 +451,21 @@ def populate_recipes_endpoint(db: Session = Depends(get_db)):
         return {"status": "success", "message": f"{len(recipes_data)} tarif basariyla eklendi!"}
     return {"status": "info", "message": f"Zaten {existing} tarif var, tekrar eklenmedi."}
 
+from pydantic import BaseModel
+class RecipeImageUpdate(BaseModel):
+    image_url: str
+
+@app.put("/recipes/{recipe_id}/image")
+def update_recipe_image(recipe_id: int, payload: RecipeImageUpdate, db: Session = Depends(get_db)):
+    """Kullanıcının manuel olarak resim linki güncelleyebilmesi için endpoint."""
+    recipe = db.query(models.RecipeDB).filter(models.RecipeDB.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Tarif bulunamadı.")
+    
+    recipe.image_url = payload.image_url
+    db.commit()
+    return {"status": "success", "message": f"Tarif (ID: {recipe_id}) resmi başarıyla güncellendi!"}
+
 # =============================================
 # 8. CHATBOT (KAAN'IN RAG SİSTEMİ - DOĞRUDAN)
 # =============================================

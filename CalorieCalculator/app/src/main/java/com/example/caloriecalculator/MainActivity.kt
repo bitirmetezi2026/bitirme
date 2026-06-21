@@ -1132,8 +1132,8 @@ fun StatisticScreen() {
                         ingredients = sr.ingredients.split(Regex(",(?![^()]*\\))")).map { it.trim() },
                         steps = (sr.steps ?: "Hazırlanışı yakında eklenecek.").split(Regex("\\d+\\.\\s*")).map { it.trim() }.filter { it.isNotBlank() },
                         calories = sr.calories,
-                        imageRes = getFoodImage(sr.name, sr.ingredients),
-                        imageUrl = null
+                        imageRes = if (sr.image_url.isNullOrBlank()) getFoodImage(sr.name, sr.ingredients) else null,
+                        imageUrl = sr.image_url.takeIf { !it.isNullOrBlank() }
                     )
                 }
             }
