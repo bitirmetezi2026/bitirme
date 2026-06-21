@@ -1569,18 +1569,26 @@ fun StatisticScreen() {
                                 onClick = {
                                     val currentCals = PersistenceManager.getMealCalorie(key)
                                     val calValue = recipeToAddToMeal!!.calories.split(" ").firstOrNull()?.toFloatOrNull() ?: 0f
+                                    
+                                    val calStr = recipeToAddToMeal!!.calories
+                                    val proteinVal = Regex("Protein:\\s*(\\d+)").find(calStr)?.groupValues?.get(1)?.toFloatOrNull() ?: 0f
+                                    val fatVal = Regex("Yağ:\\s*(\\d+)").find(calStr)?.groupValues?.get(1)?.toFloatOrNull() ?: 0f
+                                    val carbsVal = Regex("Karb:\\s*(\\d+)").find(calStr)?.groupValues?.get(1)?.toFloatOrNull() ?: 0f
+                                    
                                     PersistenceManager.saveMealCalorie(key, currentCals + calValue)
                                     
                                     // API'ye de kaydet (arka planda)
                                     val recipeName = recipeToAddToMeal!!.name
-                                    val recipeCalories = calValue
                                     coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                                         try {
                                             val token = SessionManager.token ?: ""
                                             if (token.isNotEmpty()) {
                                                 RetrofitClient.instance.saveMeal(token, MealCreate(
                                                     food_name = recipeName,
-                                                    calories = recipeCalories
+                                                    calories = calValue,
+                                                    protein = proteinVal,
+                                                    fat = fatVal,
+                                                    carbs = carbsVal
                                                 ))
                                             }
                                         } catch (e: Exception) {
