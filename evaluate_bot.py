@@ -113,8 +113,8 @@ for i, q in enumerate(test_questions):
         
         # Selamlama/Muhabbet ve Kapsam Dışı kontrolü
         q_lower = q.lower().strip()
-        greetings = ["selam", "merhaba", "naber", "nasılsın", "günaydın", "iyi akşamlar", "hey", "hi", "kimsin", "kendinden bahset", "teşekkür"]
-        is_greeting_or_ood = any(word in q_lower for word in greetings) or len(q_lower) < 20 or route_decision == "out_of_domain"
+        greetings = ["selam", "merhaba", "naber", "nasılsın", "günaydın", "iyi akşamlar", "hey", "kimsin", "kendinden bahset", "teşekkür"]
+        is_greeting_or_ood = any(q_lower.startswith(word) for word in greetings) or route_decision == "out_of_domain"
         
         retrieval_score = "N/A"
         hallucination_score = "N/A"
