@@ -1239,8 +1239,8 @@ fun StatisticScreen() {
                         item { Text("Malzemelere uygun tarif bulunamadı.", color = TextGray) }
                     } else {
                         items(recipes) { recipe ->
-                            val safeName = java.net.URLEncoder.encode(recipe.name.split(" ").firstOrNull() ?: "food", "UTF-8")
-                            val recipeWithImage = recipe.copy(imageUrl = "https://loremflickr.com/800/600/${safeName},food,recipe")
+                            val safeName = java.net.URLEncoder.encode("${recipe.name} healthy food dish", "UTF-8")
+                            val recipeWithImage = recipe.copy(imageUrl = "https://image.pollinations.ai/prompt/${safeName}?width=800&height=600&nologo=true")
                             RecipeCard(
                                 recipe = recipeWithImage,
                                 isFavorite = favoriteRecipeNames.contains(recipe.name),

@@ -75,9 +75,10 @@ def add_recipes_to_db():
     
     success_count = 0
     for r in new_recipes:
-        # Resim linki oluştur (LoremFlickr üzerinden rastgele ama konuya uygun resim)
-        keyword = r.pop("image_keyword", "healthy,food")
-        r["image_url"] = f"https://loremflickr.com/400/300/{keyword.replace(' ', ',')}"
+        # Resim linki oluştur (pollinations.ai üzerinden tarif ismine özel AI görseli)
+        keyword = r.pop("image_keyword", "healthy food")
+        safe_name = r.get("name", keyword).replace(" ", "%20")
+        r["image_url"] = f"https://image.pollinations.ai/prompt/{safe_name}%20healthy%20food?width=400&height=300&nologo=true"
         
         try:
             response = requests.post(f"{BASE_URL}/recipes/add", json=r)
