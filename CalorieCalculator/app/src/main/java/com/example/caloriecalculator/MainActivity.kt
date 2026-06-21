@@ -1081,6 +1081,19 @@ fun SettingsScreen(navController: NavController, onLogout: () -> Unit) {
     }
 }
 
+fun getFoodImage(name: String, ingredients: String): Int {
+    val searchStr = (name + " " + ingredients).lowercase()
+    return when {
+        searchStr.contains("çorba") || searchStr.contains("soup") -> R.drawable.food_soup
+        searchStr.contains("tavuk") || searchStr.contains("chicken") -> R.drawable.food_chicken
+        searchStr.contains("balık") || searchStr.contains("somon") || searchStr.contains("salmon") || searchStr.contains("fish") -> R.drawable.food_salmon
+        searchStr.contains("et") || searchStr.contains("biftek") || searchStr.contains("köfte") || searchStr.contains("steak") || searchStr.contains("beef") || searchStr.contains("meat") -> R.drawable.food_meat
+        searchStr.contains("salata") || searchStr.contains("salad") || searchStr.contains("yeşillik") -> R.drawable.food_salad
+        searchStr.contains("yulaf") || searchStr.contains("pankek") || searchStr.contains("oat") || searchStr.contains("pancake") || searchStr.contains("kahvaltı") -> R.drawable.food_oats
+        else -> R.drawable.food_bowl
+    }
+}
+
 // --- 3. NE YESEM (RECIPE) SCREEN ---
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -1119,7 +1132,8 @@ fun StatisticScreen() {
                         ingredients = sr.ingredients.split(Regex(",(?![^()]*\\))")).map { it.trim() },
                         steps = (sr.steps ?: "Hazırlanışı yakında eklenecek.").split(Regex("\\d+\\.\\s*")).map { it.trim() }.filter { it.isNotBlank() },
                         calories = sr.calories,
-                        imageUrl = sr.image_url
+                        imageRes = getFoodImage(sr.name, sr.ingredients),
+                        imageUrl = null
                     )
                 }
             }
@@ -1239,8 +1253,10 @@ fun StatisticScreen() {
                         item { Text("Malzemelere uygun tarif bulunamadı.", color = TextGray) }
                     } else {
                         items(recipes) { recipe ->
-                            val safeName = java.net.URLEncoder.encode("${recipe.name} healthy food dish", "UTF-8")
-                            val recipeWithImage = recipe.copy(imageUrl = "https://image.pollinations.ai/prompt/${safeName}?width=800&height=600&nologo=true")
+                            val recipeWithImage = recipe.copy(
+                                imageRes = getFoodImage(recipe.name, recipe.ingredients.joinToString(" ")),
+                                imageUrl = null
+                            )
                             RecipeCard(
                                 recipe = recipeWithImage,
                                 isFavorite = favoriteRecipeNames.contains(recipe.name),

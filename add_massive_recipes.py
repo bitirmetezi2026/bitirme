@@ -27,9 +27,8 @@ def generate_ai_recipes(count=5):
             "calories": "300 kcal | Protein: 30g | Yağ: 10g | Karb: 20g",
             "description": "Yemek hakkında 1-2 cümlelik çekici açıklama.",
             "ingredients": "Malzeme 1, Malzeme 2, Malzeme 3",
-            "steps": "1. Adım... 2. Adım... 3. Adım...",
-            "image_keyword": "salmon,food" (İngilizce 2 kelime)
-        }}
+            "steps": "1. Adım... 2. Adım... 3. Adım..."
+        }
     ]
     """
     
@@ -75,10 +74,8 @@ def add_recipes_to_db():
     
     success_count = 0
     for r in new_recipes:
-        # Resim linki oluştur (pollinations.ai üzerinden tarif ismine özel AI görseli)
-        keyword = r.pop("image_keyword", "healthy food")
-        safe_name = r.get("name", keyword).replace(" ", "%20")
-        r["image_url"] = f"https://image.pollinations.ai/prompt/{safe_name}%20healthy%20food?width=400&height=300&nologo=true"
+        # Android uygulamamız artık ismine bakarak otomatik yüksek kaliteli resim atadığı için
+        # resim url'si göndermemize veya AI'dan beklememize gerek kalmadı.
         
         try:
             response = requests.post(f"{BASE_URL}/recipes/add", json=r)

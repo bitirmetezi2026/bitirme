@@ -451,22 +451,6 @@ def populate_recipes_endpoint(db: Session = Depends(get_db)):
         return {"status": "success", "message": f"{len(recipes_data)} tarif basariyla eklendi!"}
     return {"status": "info", "message": f"Zaten {existing} tarif var, tekrar eklenmedi."}
 
-@app.get("/fix-images")
-def fix_images_endpoint(db: Session = Depends(get_db)):
-    """Veritabanındaki eski loremflickr resimlerini pollinations.ai ile değiştirir."""
-    import urllib.parse
-    recipes = db.query(models.RecipeDB).all()
-    count = 0
-    for r in recipes:
-        if r.image_url and "loremflickr.com" in r.image_url:
-            safe_name = urllib.parse.quote(f"{r.name} healthy food")
-            new_url = f"https://image.pollinations.ai/prompt/{safe_name}?width=800&height=600&nologo=true"
-            r.image_url = new_url
-            count += 1
-    
-    db.commit()
-    return {"status": "success", "message": f"{count} adet resim linki guncellendi!"}
-
 # =============================================
 # 8. CHATBOT (KAAN'IN RAG SİSTEMİ - DOĞRUDAN)
 # =============================================
