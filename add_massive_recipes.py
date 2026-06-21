@@ -70,13 +70,10 @@ def add_recipes_to_db():
         print("[HATA] Tarif üretilemedi!")
         return
 
-    print(f"[BASARILI] ChatGPT başarıyla {len(new_recipes)} yeni tarif üretti! Şimdi veritabanına ekleniyor...")
+    print(f"\n[BASARILI] {len(new_recipes)} yeni tarif veritabanına ekleniyor...")
     
     success_count = 0
     for r in new_recipes:
-        # Android uygulamamız artık ismine bakarak otomatik yüksek kaliteli resim atadığı için
-        # resim url'si göndermemize veya AI'dan beklememize gerek kalmadı.
-        
         try:
             response = requests.post(f"{BASE_URL}/recipes/add", json=r)
             if response.status_code == 200:
@@ -86,9 +83,9 @@ def add_recipes_to_db():
                 print(f"[HATA] Veritabanı Hatası ({r.get('name')}): {response.status_code} - {response.text}")
         except Exception as e:
             print(f"Bağlantı hatası: {e}")
-        time.sleep(1)  # Sunucuyu yormamak için bekleme
+        time.sleep(1)
         
-    print(f"\nİşlem tamamlandı! {success_count}/{len(new_recipes)} yepyeni tarif canlı sistemde yayında!")
+    print(f"\nİşlem tamamlandı! {success_count}/{len(new_recipes)} tarif canlı sistemde yayında!")
 
 if __name__ == "__main__":
     if not os.getenv("OPENAI_API_KEY"):

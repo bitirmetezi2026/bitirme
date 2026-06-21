@@ -1,0 +1,1 @@
+{"detail":"⛔ Bu endpoint'e erişim yetkiniz yok. Gizli anahtar gerekli."}
