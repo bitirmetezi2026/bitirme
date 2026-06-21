@@ -2084,7 +2084,7 @@ fun ChatbotScreen() {
                         bugunku_ogunler = meals
                     )
                     
-                    val response = RetrofitClient.instance.chatWithAi(token, request)
+                    val response = RetrofitClient.aiInstance.chatWithAi(token, request)
                     messages.add(ChatMessage(response.reply, false))
                 } catch (e: Exception) {
                     messages.add(ChatMessage(context.getString(R.string.chatbot_error, e.localizedMessage ?: ""), false))

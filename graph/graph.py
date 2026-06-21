@@ -41,6 +41,13 @@ def grade_generation_grounded_in_documents_and_question(state: GraphState) -> st
     documents = state["documents"]
     generation = state["generation"]
 
+    # Selamlama ve basit sohbetler için halüsinasyon kontrolünü atla
+    q_lower = question.lower().strip()
+    greetings = ["selam", "merhaba", "naber", "nasılsın", "günaydın", "iyi akşamlar", "hey", "hi"]
+    if any(q_lower.startswith(word) for word in greetings) or len(q_lower) < 15:
+        print("--- KARAR: Basit sohbet/selamlama algılandı. Doğrudan bitiş. ---")
+        return "useful"
+
     score = hallucination_grader.invoke(
         {"documents": documents, "generation": generation}
     )
