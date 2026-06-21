@@ -141,6 +141,16 @@ data class ServerRecipe(
     val image_url: String?
 )
 
+data class RecipeCreate(
+    val name: String,
+    val calories: String,
+    val description: String,
+    val ingredients: String,
+    val steps: String,
+    val image_url: String? = null,
+    val user_id: Int? = null
+)
+
 data class UserProfileResponse(
     val id: Int,
     val email: String,
@@ -245,7 +255,10 @@ interface DiyetApi {
     ): RecipeResponse
 
     @retrofit2.http.GET("recipes/")
-    suspend fun getRecipes(): List<ServerRecipe>
+    suspend fun getRecipes(@retrofit2.http.Query("user_id") userId: Int? = null): List<ServerRecipe>
+
+    @POST("recipes/add")
+    suspend fun addRecipe(@Body request: RecipeCreate): ServerRecipe
 
     @retrofit2.http.DELETE("meals/{meal_id}")
     suspend fun deleteMeal(

@@ -1123,7 +1123,7 @@ fun StatisticScreen() {
     LaunchedEffect(Unit) {
         try {
             isLoadingRecipes = true
-            val serverRecipes = RetrofitClient.instance.getRecipes()
+            val serverRecipes = RetrofitClient.instance.getRecipes(SessionManager.userId)
             if (serverRecipes.isNotEmpty()) {
                 dbRecipes = serverRecipes.map { sr ->
                     Recipe(
@@ -1262,7 +1262,33 @@ fun StatisticScreen() {
                                 isFavorite = favoriteRecipeNames.contains(recipe.name),
                                 onFavoriteToggle = {
                                     val newFavs = favoriteRecipeNames.toMutableSet()
-                                    if (newFavs.contains(recipe.name)) newFavs.remove(recipe.name) else newFavs.add(recipe.name)
+                                    if (newFavs.contains(recipe.name)) {
+                                        newFavs.remove(recipe.name)
+                                    } else {
+                                        newFavs.add(recipe.name)
+                                        if (dbRecipes.none { it.name == recipe.name }) {
+                                            coroutineScope.launch {
+                                                try {
+                                                    val newSr = RetrofitClient.instance.addRecipe(
+                                                        RecipeCreate(
+                                                            name = recipe.name,
+                                                            calories = recipe.calories,
+                                                            description = recipe.description,
+                                                            ingredients = recipe.ingredients.joinToString(", "),
+                                                            steps = recipe.steps.joinToString(" "),
+                                                            user_id = SessionManager.userId
+                                                        )
+                                                    )
+                                                    dbRecipes = dbRecipes + recipe.copy(
+                                                        imageRes = getFoodImage(newSr.name, newSr.ingredients),
+                                                        imageUrl = newSr.image_url
+                                                    )
+                                                } catch (e: Exception) {
+                                                    e.printStackTrace()
+                                                }
+                                            }
+                                        }
+                                    }
                                     PersistenceManager.favoriteRecipes = newFavs
                                     favoriteRecipeNames = newFavs
                                 },

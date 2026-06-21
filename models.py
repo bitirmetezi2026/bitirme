@@ -100,6 +100,7 @@ class RecipeDB(Base):
     ingredients = Column(String)  # Virgülle ayrılmış liste
     steps = Column(String, nullable=True) # Tarifin hazırlanış adımları
     image_url = Column(String, nullable=True) # Resim linki
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True) # Hangi kullanıcıya ait olduğu (None ise herkese açık)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

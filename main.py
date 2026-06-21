@@ -407,9 +407,13 @@ def get_exercises_by_date(
     return logs
 
 @app.get("/recipes/", response_model=List[schemas.RecipeOut])
-def get_all_recipes(db: Session = Depends(get_db)):
+def get_all_recipes(user_id: Optional[int] = Query(None), db: Session = Depends(get_db)):
     """Android'in açılışta tüm tarifleri çekmesi için endpoint"""
-    recipes = db.query(models.RecipeDB).all()
+    query = db.query(models.RecipeDB)
+    if user_id:
+        recipes = query.filter((models.RecipeDB.user_id == None) | (models.RecipeDB.user_id == user_id)).all()
+    else:
+        recipes = query.filter(models.RecipeDB.user_id == None).all()
     return recipes
 
 @app.post("/recipes/add", response_model=schemas.RecipeOut)

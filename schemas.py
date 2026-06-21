@@ -128,6 +128,7 @@ class RecipeCreate(BaseModel):
     ingredients: Optional[str] = ""
     steps: Optional[str] = "Tarifin detaylı yapılışı yakında eklenecektir."
     image_url: Optional[str] = None
+    user_id: Optional[int] = None
 
 class RecipeOut(BaseModel):
     id: int
