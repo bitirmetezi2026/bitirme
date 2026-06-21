@@ -28,7 +28,7 @@ def generate_ai_recipes(count=5):
             "description": "Yemek hakkında 1-2 cümlelik çekici açıklama.",
             "ingredients": "Malzeme 1, Malzeme 2, Malzeme 3",
             "steps": "1. Adım... 2. Adım... 3. Adım..."
-        }
+        }}
     ]
     """
     
