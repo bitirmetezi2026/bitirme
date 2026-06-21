@@ -175,4 +175,7 @@ class DailySummaryResponse(BaseModel):
     total_water_ml: int
     total_calories_burned: float
     target_calories: float
+    target_protein: float
+    target_fat: float
+    target_carbs: float
 

@@ -780,6 +780,29 @@ def get_daily_summary(
     min_cal = 1500.0 if cinsiyet.lower() == "erkek" else 1200.0
     if target_cal < min_cal:
         target_cal = min_cal
+
+    # Makro Hedefleri Hesaplama
+    p_ratio = 0.30
+    f_ratio = 0.30
+    c_ratio = 0.40
+
+    if hedef == "Kilo Vermek":
+        p_ratio = 0.40
+        f_ratio = 0.30
+        c_ratio = 0.30
+    elif hedef == "Kilo Almak":
+        if "Kas Odaklı" in hedef_hiz:
+            p_ratio = 0.35
+            f_ratio = 0.25
+            c_ratio = 0.40
+        else:
+            p_ratio = 0.25
+            f_ratio = 0.25
+            c_ratio = 0.50
+
+    target_protein = (target_cal * p_ratio) / 4.0
+    target_fat = (target_cal * f_ratio) / 9.0
+    target_carbs = (target_cal * c_ratio) / 4.0
         
     return {
         "total_calories_eaten": round(total_calories_eaten, 1),
@@ -788,7 +811,10 @@ def get_daily_summary(
         "total_carbs": round(total_carbs, 1),
         "total_water_ml": total_water_ml,
         "total_calories_burned": round(total_calories_burned, 1),
-        "target_calories": round(target_cal, 1)
+        "target_calories": round(target_cal, 1),
+        "target_protein": round(target_protein, 1),
+        "target_fat": round(target_fat, 1),
+        "target_carbs": round(target_carbs, 1)
     }
 
 @app.get("/food-calories/", response_model=List[schemas.FoodCalorieResponse])

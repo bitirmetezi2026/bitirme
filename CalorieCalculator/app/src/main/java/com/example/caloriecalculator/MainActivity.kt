@@ -1868,11 +1868,67 @@ fun CalorieDonutChart(consumed: Float, target: Float, title: String, burnedCalor
         }
     }
 }
+@Composable
+fun MacroDonutChart(title: String, consumed: Float, target: Float, color: Color) {
+    val progress = if (target > 0) (consumed / target).coerceIn(0f, 1f) else 0f
+    val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = progress, label = title,
+        animationSpec = androidx.compose.animation.core.tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    )
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(modifier = Modifier.size(70.dp), contentAlignment = Alignment.Center) {
+            androidx.compose.foundation.Canvas(modifier = Modifier.size(70.dp)) {
+                val strokeWidth = 8.dp.toPx()
+                val sweepAngle = 360f * animatedProgress
+                
+                // Arkaplan
+                drawArc(
+                    color = color.copy(alpha = 0.2f),
+                    startAngle = 0f, sweepAngle = 360f, useCenter = false,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                )
+                // İlerleme
+                drawArc(
+                    color = color,
+                    startAngle = -90f, sweepAngle = sweepAngle, useCenter = false,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                )
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("${consumed.toInt()}g", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C2C2C))
+                Text("/${target.toInt()}g", fontSize = 10.sp, color = TextGray)
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A))
+    }
+}
+
+@Composable
+fun MacroProgressCard(consumedProtein: Float, targetProtein: Float, consumedFat: Float, targetFat: Float, consumedCarbs: Float, targetCarbs: Float) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+            Text("Makrolarım", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Color(0xFF1A1A1A))
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                MacroDonutChart(title = "Protein", consumed = consumedProtein, target = targetProtein, color = Color(0xFFE53935))
+                MacroDonutChart(title = "Yağ", consumed = consumedFat, target = targetFat, color = Color(0xFFFFB300))
+                MacroDonutChart(title = "Karb", consumed = consumedCarbs, target = targetCarbs, color = Color(0xFF43A047))
+            }
+        }
+    }
+}
 
 @Composable
 fun HomeScreen() {
     var selectedDate by remember { mutableStateOf("") }
     var exerciseList by remember { mutableStateOf<List<ExerciseEntry>>(emptyList()) }
+    var dailySummary by remember { mutableStateOf<DailySummaryResponse?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     // Bugünün egzersizlerini uygulama açılışında API'den yükle
@@ -1886,6 +1942,19 @@ fun HomeScreen() {
             exerciseList = loaded.map { ExerciseEntry(it.exercise_type, it.minutes, it.calories_burned.toInt()) }
         } catch (e: Exception) {
             android.util.Log.e("CalorieCalculator", "Egzersizler yüklenemedi: ${e.localizedMessage}", e)
+        }
+    }
+    
+    androidx.compose.runtime.LaunchedEffect(PersistenceManager.dataVersion.intValue) {
+        try {
+            val token = SessionManager.token ?: return@LaunchedEffect
+            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+            val summary = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                RetrofitClient.instance.getDailySummary(token, today)
+            }
+            dailySummary = summary
+        } catch (e: Exception) {
+            android.util.Log.e("CalorieCalculator", "Makrolar yüklenemedi: ${e.localizedMessage}", e)
         }
     }
 
@@ -1920,6 +1989,20 @@ fun HomeScreen() {
             }
         }
         item { Spacer(modifier = Modifier.height(16.dp)) }
+        item {
+            val s = dailySummary
+            if (s != null) {
+                MacroProgressCard(
+                    consumedProtein = s.total_protein,
+                    targetProtein = s.target_protein,
+                    consumedFat = s.total_fat,
+                    targetFat = s.target_fat,
+                    consumedCarbs = s.total_carbs,
+                    targetCarbs = s.target_carbs
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
         item { DailyMealDetailCard(selectedDate = selectedDate) }
         item { Spacer(modifier = Modifier.height(16.dp)) }
         item { InteractiveWaterCard(modifier = Modifier.fillMaxWidth()) }

@@ -174,7 +174,10 @@ data class DailySummaryResponse(
     val total_carbs: Float,
     val total_water_ml: Int,
     val total_calories_burned: Float,
-    val target_calories: Float
+    val target_calories: Float,
+    val target_protein: Float = 0f,
+    val target_fat: Float = 0f,
+    val target_carbs: Float = 0f
 )
 
 data class FoodCalorieResponse(
