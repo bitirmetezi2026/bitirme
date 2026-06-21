@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_community.tools.tavily_search import TavilySearchResults
 
 from ..state import GraphState
@@ -11,10 +11,14 @@ web_search_tool = TavilySearchResults(k=3)
 def web_search(state: GraphState) -> Dict[str, Any]:
     print("---WEB SEARCH---")
     question = state["question"]
-    documents = state["documents"]
+    documents = state.get("documents", [])
 
-    docs = web_search_tool.invoke({"query": question})
-    web_results = "\n".join([d["content"] for d in docs])
+    try:
+        docs = web_search_tool.invoke({"query": question})
+        web_results = "\n".join([d["content"] for d in docs if isinstance(d, dict) and "content" in d])
+    except Exception as e:
+        web_results = "Web search error or invalid API key."
+    
     web_results = Document(page_content=web_results)
     if documents is not None:
         documents.append(web_results)

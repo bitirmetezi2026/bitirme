@@ -1,16 +1,16 @@
 from typing import Literal
 
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 
 
 class RouteQuery(BaseModel):
     """Route a user query to the most relevant datasource."""
 
-    datasource: Literal["vectorstore", "websearch"] = Field(
+    datasource: Literal["vectorstore", "websearch", "out_of_domain"] = Field(
         ...,
-        description="Given a user question choose to route it to web search or a vectorstore.",
+        description="Given a user question choose to route it to web search, a vectorstore, or out_of_domain.",
     )
 
 
@@ -18,13 +18,12 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 structured_llm_router = llm.with_structured_output(RouteQuery)
 
 system = """You are an expert at routing a user question to a vectorstore or web search.
-The vectorstore contains documents about nutrition, diets, meal plans, and health guidelines, including official dietary recommendations, nutrition studies, and meal planning guides.
+The vectorstore contains documents about nutrition, diets, meal plans, and health guidelines.
 
 Use the vectorstore for questions about nutrition, diet plans, calories, macronutrients, vitamins, minerals, and related health guidelines.
+Use the websearch for questions related to diet, food, or health that are NOT in the vectorstore.
 
-Answer only the specific question asked, using the vectorstore when relevant. Do not add extra information that wasn’t explicitly requested.
-
-For all other questions not related to nutrition or dietetics, use web search."""
+If the question is completely unrelated to nutrition, diet, health, or the calorie tracking application (for example: history, geography, python programming, cars, etc.), you MUST choose out_of_domain."""
 route_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", system),

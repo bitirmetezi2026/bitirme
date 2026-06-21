@@ -18,10 +18,12 @@ from .state import GraphState
 # DİKKAT: get_user_profile importunu SİLDİK.
 from .nodes.generate import generate
 from .nodes.grade_documents import grade_documents
+from .nodes.out_of_domain import out_of_domain
 from .nodes.retrieve import retrieve
 from .nodes.web_search import web_search
 
 # --- Karar ve Yönlendirme Fonksiyonları ---
+OUT_OF_DOMAIN = "out_of_domain"
 
 def decide_to_generate(state: GraphState) -> str:
     print("--- DEĞERLENDİRME: Alınan Belgeler İnceleniyor ---")
@@ -43,8 +45,8 @@ def grade_generation_grounded_in_documents_and_question(state: GraphState) -> st
 
     # Selamlama ve basit sohbetler için halüsinasyon kontrolünü atla
     q_lower = question.lower().strip()
-    greetings = ["selam", "merhaba", "naber", "nasılsın", "günaydın", "iyi akşamlar", "hey", "hi"]
-    if any(q_lower.startswith(word) for word in greetings) or len(q_lower) < 15:
+    greetings = ["selam", "merhaba", "naber", "nasılsın", "günaydın", "iyi akşamlar", "hey", "hi", "kimsin", "kendinden bahset"]
+    if any(word in q_lower for word in greetings) or len(q_lower) < 20:
         print("--- KARAR: Basit sohbet/selamlama algılandı. Doğrudan bitiş. ---")
         return "useful"
 
@@ -79,6 +81,9 @@ def route_question(state: GraphState) -> str:
     elif source.datasource == "vectorstore":
         print(f"--- KARAR: Soru '{source.datasource}'e (RAG) yönlendirildi. ---")
         return RETRIEVE
+    else:
+        print("--- KARAR: Kapsam dışı soru tespit edildi. ---")
+        return OUT_OF_DOMAIN
 
 
 # --- GRAFİK (WORKFLOW) OLUŞTURMA ---
@@ -90,6 +95,7 @@ workflow.add_node(RETRIEVE, retrieve)
 workflow.add_node(GRADE_DOCUMENTS, grade_documents)
 workflow.add_node(GENERATE, generate)
 workflow.add_node(WEBSEARCH, web_search)
+workflow.add_node(OUT_OF_DOMAIN, out_of_domain)
 
 
 
@@ -100,6 +106,7 @@ workflow.set_conditional_entry_point(
     {
         WEBSEARCH: WEBSEARCH,
         RETRIEVE: RETRIEVE,
+        OUT_OF_DOMAIN: OUT_OF_DOMAIN,
     },
 )
 
@@ -116,6 +123,7 @@ workflow.add_conditional_edges(
 )
 
 workflow.add_edge(WEBSEARCH, GENERATE)
+workflow.add_edge(OUT_OF_DOMAIN, END)
 
 workflow.add_conditional_edges(
     GENERATE,

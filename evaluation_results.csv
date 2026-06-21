@@ -1,0 +1,16 @@
+Question,Latency_sec,Has_Documents,Hallucination,Relevance,Generation
+Günde kaç litre su içmeliyim?,-1,Error,Error,Error,"string indices must be integers, not 'str'"
+"Ketojenik diyet nedir, zararları var mıdır?",-1,Error,Error,Error,"string indices must be integers, not 'str'"
+Kilo vermek için karbonhidratı tamamen kesmeli miyim?,-1,Error,Error,Error,"string indices must be integers, not 'str'"
+Aralıklı oruç (Intermittent Fasting) nasıl yapılır?,-1,Error,Error,Error,'documents'
+Tip 2 diyabet hastaları ara öğünde ne yiyebilir?,-1,Error,Error,Error,"string indices must be integers, not 'str'"
+Zayıflamak için günde 5 bardak elma sirkesi içsem işe yarar mı?,-1,Error,Error,Error,"string indices must be integers, not 'str'"
+Sadece lahana çorbası içerek 1 haftada 10 kilo verebilir miyim?,-1,Error,Error,Error,'documents'
+Türkiye'nin başkenti neresidir?,-1,Error,Error,Error,'documents'
+2024 Avrupa Şampiyonasını kim kazandı?,-1,Error,Error,Error,'documents'
+Bana Python'da bir 'for' döngüsü yazar mısın?,-1,Error,Error,Error,'documents'
+170 cm boyunda ve 80 kilo bir kadınım. Hedefim kilo vermek. Bana günlük kalori hedefimi hesapla.,-1,Error,Error,Error,"string indices must be integers, not 'str'"
+Bugün kahvaltıda 500 kalori aldım. Günlük hedefim 1500 kalori. Geriye kaç kalorim kaldı?,-1,Error,Error,Error,"string indices must be integers, not 'str'"
+1 gram protein kaç kaloridir?,-1,Error,Error,Error,"string indices must be integers, not 'str'"
+"Selam, nasılsın?",-1,Error,Error,Error,'documents'
+"Bana biraz kendinden bahset, sen kimsin?",-1,Error,Error,Error,'documents'
