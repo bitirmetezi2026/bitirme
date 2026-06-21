@@ -17,7 +17,7 @@ class Recipe(BaseModel):
     description: str = Field(description="Yemeğin kısa bir açıklaması ve neden sağlıklı olduğu")
     ingredients: List[str] = Field(description="Kullanılacak malzemelerin listesi")
     steps: List[str] = Field(description="Adım adım hazırlanış tarifi")
-    calories: str = Field(description="Tahmini kalori miktarı")
+    calories: str = Field(description="Kesinlikle şu formatta olmalı: '300 kcal | Protein: 30g | Yağ: 10g | Karb: 20g'")
 
 class RecipeRecommendations(BaseModel):
     recipes: List[Recipe] = Field(description="Önerilen 2-3 sağlıklı tarifin listesi")
