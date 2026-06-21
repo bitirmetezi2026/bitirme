@@ -2700,6 +2700,21 @@ fun ExerciseCard(
                     modifier = Modifier.padding(horizontal = 2.dp)
                 )
             }
+            if (PersistenceManager.activityLevel != "Hareketsiz") {
+                Spacer(modifier = Modifier.height(16.dp))
+                Surface(color = Color(0xFFFFF9E6), shape = RoundedCornerShape(12.dp)) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                        Icon(Icons.Filled.Info, contentDescription = null, tint = Color(0xFFFBC02D), modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Profilinizde 'Aktif' bir yaşam tarzı seçtiğiniz için kalori hedefiniz yüksektir. Çift sayım olmaması adına sadece ekstra sporlarınızı girin.",
+                            fontSize = 11.sp,
+                            color = Color(0xFF5A4A00),
+                            lineHeight = 14.sp
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -2760,21 +2775,6 @@ fun ExerciseCard(
                                     Text("~$previewCal kcal", fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = FireOrange)
                                 }
                                 Icon(Icons.Filled.LocalFireDepartment, contentDescription = null, tint = FireAmber, modifier = Modifier.size(28.dp))
-                            }
-                        }
-                    }
-                    if (PersistenceManager.activityLevel != "Hareketsiz") {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Surface(color = Color(0xFFFFF9E6), shape = RoundedCornerShape(12.dp)) {
-                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-                                Icon(Icons.Filled.Info, contentDescription = null, tint = Color(0xFFFBC02D), modifier = Modifier.size(20.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    "Profilinizde 'Aktif' bir yaşam tarzı seçtiğiniz için günlük kalori hedefiniz yüksektir. Çift sayım olmaması adına sadece rutin dışı sporlarınızı eklemeniz tavsiye edilir.",
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF5A4A00),
-                                    lineHeight = 16.sp
-                                )
                             }
                         }
                     }
