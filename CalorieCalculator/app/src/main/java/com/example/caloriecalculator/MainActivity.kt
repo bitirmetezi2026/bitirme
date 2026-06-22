@@ -1926,12 +1926,23 @@ fun MacroProgressCard(consumedProtein: Float, targetProtein: Float, consumedFat:
 
 @Composable
 fun HomeScreen() {
-    var selectedDate by remember { 
-        mutableStateOf(java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())) 
-    }
+    val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+    var selectedDate by remember { mutableStateOf(todayStr) }
+    
+    val todayTitle = stringResource(R.string.today_calories_title)
+    var displayCalories by remember { mutableFloatStateOf(0f) }
+    var displayTitle by remember { mutableStateOf(todayTitle) }
+
     var exerciseList by remember { mutableStateOf<List<ExerciseEntry>>(emptyList()) }
     var dailySummary by remember { mutableStateOf<DailySummaryResponse?>(null) }
     val coroutineScope = rememberCoroutineScope()
+
+    androidx.compose.runtime.LaunchedEffect(PersistenceManager.dataVersion.intValue) {
+        if (selectedDate == todayStr) {
+            displayCalories = PersistenceManager.getMealCalorie("breakfast") + PersistenceManager.getMealCalorie("lunch") + PersistenceManager.getMealCalorie("dinner") + PersistenceManager.getMealCalorie("snack")
+            displayTitle = todayTitle
+        }
+    }
 
     // Bugünün egzersizlerini uygulama açılışında API'den yükle
     androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -1965,15 +1976,6 @@ fun HomeScreen() {
         item {
             Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    val todayTitle = stringResource(R.string.today_calories_title)
-                    var displayCalories by remember { mutableFloatStateOf(0f) }
-                    var displayTitle by remember { mutableStateOf(todayTitle) }
-                    
-                    androidx.compose.runtime.LaunchedEffect(PersistenceManager.dataVersion.intValue) {
-                        displayCalories = PersistenceManager.getMealCalorie("breakfast") + PersistenceManager.getMealCalorie("lunch") + PersistenceManager.getMealCalorie("dinner") + PersistenceManager.getMealCalorie("snack")
-                        displayTitle = todayTitle
-                    }
-                    
                     CalorieDonutChart(
                         consumed = displayCalories,
                         target = PersistenceManager.getTargetCalories(),
