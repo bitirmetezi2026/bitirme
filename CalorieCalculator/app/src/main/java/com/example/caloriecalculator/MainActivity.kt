@@ -2006,11 +2006,15 @@ fun HomeScreen() {
         }
         item { DailyMealDetailCard(selectedDate = selectedDate) }
         item { Spacer(modifier = Modifier.height(16.dp)) }
-        item { InteractiveWaterCard(modifier = Modifier.fillMaxWidth()) }
+        val s = dailySummary
+        val isToday = selectedDate == java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        item { InteractiveWaterCard(modifier = Modifier.fillMaxWidth(), consumedWaterMl = s?.total_water_ml ?: 0, isToday = isToday) }
         item { Spacer(modifier = Modifier.height(16.dp)) }
         item {
             ExerciseCard(
                 exerciseList = exerciseList,
+                caloriesBurned = s?.total_calories_burned ?: 0f,
+                isToday = isToday,
                 onExerciseAdded = { entry ->
                     exerciseList = exerciseList + entry
                     // API'ye kaydet
@@ -2033,8 +2037,6 @@ fun HomeScreen() {
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        item { Spacer(modifier = Modifier.height(16.dp)) }
-        item { DaySummaryCard(exerciseList = exerciseList) }
         item { Spacer(modifier = Modifier.height(24.dp)) }
     }
 }
@@ -2641,6 +2643,8 @@ private val FireAmber  = Color(0xFFFFA726)
 @Composable
 fun ExerciseCard(
     exerciseList: List<ExerciseEntry>,
+    caloriesBurned: Float = 0f,
+    isToday: Boolean = true,
     onExerciseAdded: (ExerciseEntry) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -2650,8 +2654,8 @@ fun ExerciseCard(
     var durationText by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
-    val totalBurned = exerciseList.sumOf { it.caloriesBurned }
-    val hasExercise = exerciseList.isNotEmpty()
+    val totalBurned = if (isToday) exerciseList.sumOf { it.caloriesBurned } else caloriesBurned.toInt()
+    val hasExercise = if (isToday) exerciseList.isNotEmpty() else totalBurned > 0
     val weightKg = PersistenceManager.kiloKg.let { if (it > 0) it else 70f }
 
     // MET tablosu (Ainsworth 2011 Compendium) — emoji yok, sadece isim
@@ -2710,19 +2714,21 @@ fun ExerciseCard(
                         fontWeight = if (hasExercise) FontWeight.SemiBold else FontWeight.Normal
                     )
                 }
-                // Ekle butonu — ateş rengi
-                Button(
-                    onClick = { showDialog = true },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = FireOrange,
-                        contentColor = Color.White
-                    ),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Ekle", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                // Ekle butonu
+                if (isToday) {
+                    Button(
+                        onClick = { showDialog = true },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = FireOrange,
+                            contentColor = Color.White
+                        ),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Ekle", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 
@@ -3010,14 +3016,18 @@ fun SummaryStatBox(label: String, value: String, valueColor: Color) {
 
 
 @Composable
-fun InteractiveWaterCard(modifier: Modifier = Modifier) {
+fun InteractiveWaterCard(modifier: Modifier = Modifier, consumedWaterMl: Int = 0, isToday: Boolean = true) {
     var waterGlasses by remember { mutableIntStateOf(0) }
     var isLoading by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     
-    // Su sayısını PersistenceManager'dan al ve dinle
-    androidx.compose.runtime.LaunchedEffect(PersistenceManager.waterVersion.intValue) {
-        waterGlasses = PersistenceManager.getWaterCount()
+    // Su sayısını PersistenceManager'dan al veya API'den göster
+    androidx.compose.runtime.LaunchedEffect(consumedWaterMl, isToday, PersistenceManager.waterVersion.intValue) {
+        if (isToday) {
+            waterGlasses = PersistenceManager.getWaterCount()
+        } else {
+            waterGlasses = consumedWaterMl / 250
+        }
     }
     
     val goalGlasses = 8
@@ -3139,21 +3149,23 @@ fun InteractiveWaterCard(modifier: Modifier = Modifier) {
                     }
                 }
                 
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color(0xFF1976D2), strokeWidth = 2.dp)
-                } else {
-                    Button(
-                        onClick = handleAddWater,
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF1976D2),
-                            contentColor = Color.White
-                        ),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Icon(Icons.Filled.Add, contentDescription = "Su Ekle", modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Ekle", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                if (isToday) {
+                    if (isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color(0xFF1976D2), strokeWidth = 2.dp)
+                    } else {
+                        Button(
+                            onClick = handleAddWater,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF1976D2),
+                                contentColor = Color.White
+                            ),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Icon(Icons.Filled.Add, contentDescription = "Su Ekle", modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Ekle", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
