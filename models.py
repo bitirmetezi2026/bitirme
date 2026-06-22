@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -30,6 +30,7 @@ class User(Base):
     chats = relationship("ChatLog", back_populates="owner")
     water_logs = relationship("WaterLog", back_populates="owner")
     exercises = relationship("ExerciseLog", back_populates="owner")
+    daily_logs = relationship("DailyLog", back_populates="owner")
 
 # 2. YEMEK TABLOSU
 class Meal(Base):
@@ -115,4 +116,24 @@ class FoodCalorie(Base):
     carbs = Column(Float, default=0.0)
     serving_description = Column(String, nullable=True)
     category = Column(String, nullable=True)
+
+# 6. GUNLUK OZET (DAILY LOG) TABLOSU
+class DailyLog(Base):
+    __tablename__ = "daily_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    date = Column(Date, nullable=False)
+    
+    total_calories_eaten = Column(Float, default=0.0)
+    net_calories = Column(Float, default=0.0)
+    sports_calories_burned = Column(Float, default=0.0)
+    
+    protein = Column(Float, default=0.0)
+    fat = Column(Float, default=0.0)
+    carbs = Column(Float, default=0.0)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    owner = relationship("User", back_populates="daily_logs")
 

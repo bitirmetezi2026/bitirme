@@ -817,6 +817,163 @@ def get_daily_summary(
         "target_carbs": round(target_carbs, 1)
     }
 
+@app.get("/periodic-summary/", response_model=List[schemas.PeriodicSummaryResponse])
+def get_periodic_summary(
+    start_date: str = Query(..., description="Baslangic Tarihi: YYYY-MM-DD"),
+    end_date: str = Query(..., description="Bitis Tarihi: YYYY-MM-DD"),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Verilen tarih araligindaki (orn: 1 ay) tum gunlerin ozetini dizi (liste) halinde dondurur."""
+    from datetime import datetime, timedelta
+    try:
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Tarih formati hatali. YYYY-MM-DD kullanin.")
+
+    if (end_dt - start_dt).days > 31:
+        raise HTTPException(status_code=400, detail="Maksimum 31 gunluk veri cekebilirsiniz.")
+
+    # Hedefleri hesapla
+    boy = current_user.boy_cm or 170.0
+    kilo = current_user.kilo_kg or 70.0
+    yas = current_user.yas or 30
+    cinsiyet = current_user.cinsiyet or "Belirtilmemis"
+    activity_level = current_user.activity_level or "Hareketsiz"
+    hedef = current_user.hedef or "Korumak"
+    hedef_hiz = current_user.hedef_hiz or ""
+    
+    bmr = 10.0 * kilo + 6.25 * boy - 5.0 * yas
+    if cinsiyet.lower() == "erkek":
+        bmr += 5.0
+    else:
+        bmr -= 161.0
+        
+    activity_multiplier = 1.2
+    if activity_level == "Az Aktif":
+        activity_multiplier = 1.375
+    elif activity_level == "Orta Aktif":
+        activity_multiplier = 1.55
+    elif activity_level == "Cok Aktif":
+        activity_multiplier = 1.725
+        
+    tdee = bmr * activity_multiplier
+    target_cal = tdee
+    
+    if hedef == "Kilo Vermek":
+        deficit = 550.0
+        if "0.25" in hedef_hiz:
+            deficit = 275.0
+        elif "1.0" in hedef_hiz:
+            deficit = 1100.0
+        target_cal -= deficit
+    elif hedef == "Kilo Almak":
+        surplus = 400.0
+        if "Kas Odakli" in hedef_hiz:
+            surplus = 250.0
+        elif "Hizli" in hedef_hiz:
+            surplus = 700.0
+        target_cal += surplus
+        
+    min_cal = 1500.0 if cinsiyet.lower() == "erkek" else 1200.0
+    if target_cal < min_cal:
+        target_cal = min_cal
+
+    # Makro Hedefleri Hesaplama
+    p_ratio = 0.30
+    f_ratio = 0.30
+    c_ratio = 0.40
+
+    if hedef == "Kilo Vermek":
+        p_ratio = 0.40
+        f_ratio = 0.30
+        c_ratio = 0.30
+    elif hedef == "Kilo Almak":
+        if "Kas Odakli" in hedef_hiz:
+            p_ratio = 0.35
+            f_ratio = 0.25
+            c_ratio = 0.40
+        else:
+            p_ratio = 0.25
+            f_ratio = 0.25
+            c_ratio = 0.50
+
+    target_protein = (target_cal * p_ratio) / 4.0
+    target_fat = (target_cal * f_ratio) / 9.0
+    target_carbs = (target_cal * c_ratio) / 4.0
+
+    # Verileri Cek
+    next_day_of_end = end_dt + timedelta(days=1)
+    
+    meals = db.query(models.Meal).filter(
+        models.Meal.user_id == current_user.id,
+        models.Meal.created_at >= start_dt,
+        models.Meal.created_at < next_day_of_end
+    ).all()
+    
+    water_logs = db.query(models.WaterLog).filter(
+        models.WaterLog.user_id == current_user.id,
+        models.WaterLog.created_at >= start_dt,
+        models.WaterLog.created_at < next_day_of_end
+    ).all()
+    
+    exercise_logs = db.query(models.ExerciseLog).filter(
+        models.ExerciseLog.user_id == current_user.id,
+        models.ExerciseLog.created_at >= start_dt,
+        models.ExerciseLog.created_at < next_day_of_end
+    ).all()
+
+    # Grupla
+    results = {}
+    current_date = start_dt
+    while current_date <= end_dt:
+        date_str = current_date.strftime("%Y-%m-%d")
+        results[date_str] = {
+            "date": date_str,
+            "total_calories_eaten": 0.0,
+            "total_protein": 0.0,
+            "total_fat": 0.0,
+            "total_carbs": 0.0,
+            "total_water_ml": 0,
+            "total_calories_burned": 0.0,
+            "target_calories": round(target_cal, 1),
+            "target_protein": round(target_protein, 1),
+            "target_fat": round(target_fat, 1),
+            "target_carbs": round(target_carbs, 1)
+        }
+        current_date += timedelta(days=1)
+
+    for m in meals:
+        date_str = m.created_at.strftime("%Y-%m-%d")
+        if date_str in results:
+            results[date_str]["total_calories_eaten"] += m.calories
+            results[date_str]["total_protein"] += (m.protein or 0.0)
+            results[date_str]["total_fat"] += (m.fat or 0.0)
+            results[date_str]["total_carbs"] += (m.carbs or 0.0)
+
+    for w in water_logs:
+        date_str = w.created_at.strftime("%Y-%m-%d")
+        if date_str in results:
+            results[date_str]["total_water_ml"] += w.amount_ml
+
+    for e in exercise_logs:
+        date_str = e.created_at.strftime("%Y-%m-%d")
+        if date_str in results:
+            results[date_str]["total_calories_burned"] += e.calories_burned
+
+    # Yuvarla
+    for date_str, data in results.items():
+        data["total_calories_eaten"] = round(data["total_calories_eaten"], 1)
+        data["total_protein"] = round(data["total_protein"], 1)
+        data["total_fat"] = round(data["total_fat"], 1)
+        data["total_carbs"] = round(data["total_carbs"], 1)
+        data["total_calories_burned"] = round(data["total_calories_burned"], 1)
+
+    # Liste olarak don (tarihe gore sirali)
+    sorted_results = [results[d] for d in sorted(results.keys())]
+    return sorted_results
+
 @app.get("/food-calories/", response_model=List[schemas.FoodCalorieResponse])
 def get_food_calories(
     query: Optional[str] = Query(None, description="Arama sorgusu (yemek adı)"),
@@ -869,6 +1026,53 @@ def get_chat_history_endpoint(
             "created_at": c.created_at.isoformat() if c.created_at else None
         } for c in chats
     ]
+
+@app.post("/daily_logs/", response_model=schemas.DailyLogResponse)
+def upsert_daily_log(
+    log_data: schemas.DailyLogCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Kullanicinin gunluk kalori ve makro verilerini (Supabase'e) kalici olarak kaydeder.
+    O gun icin zaten bir kayit varsa gunceller (Upsert mantigi).
+    """
+    from datetime import datetime
+    try:
+        log_date = datetime.strptime(log_data.date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Tarih formati hatali. YYYY-MM-DD kullanin.")
+
+    existing_log = db.query(models.DailyLog).filter(
+        models.DailyLog.user_id == current_user.id,
+        models.DailyLog.date == log_date
+    ).first()
+
+    if existing_log:
+        existing_log.total_calories_eaten = log_data.total_calories_eaten
+        existing_log.net_calories = log_data.net_calories
+        existing_log.sports_calories_burned = log_data.sports_calories_burned
+        existing_log.protein = log_data.protein
+        existing_log.fat = log_data.fat
+        existing_log.carbs = log_data.carbs
+        db.commit()
+        db.refresh(existing_log)
+        return existing_log
+    else:
+        new_log = models.DailyLog(
+            user_id=current_user.id,
+            date=log_date,
+            total_calories_eaten=log_data.total_calories_eaten,
+            net_calories=log_data.net_calories,
+            sports_calories_burned=log_data.sports_calories_burned,
+            protein=log_data.protein,
+            fat=log_data.fat,
+            carbs=log_data.carbs
+        )
+        db.add(new_log)
+        db.commit()
+        db.refresh(new_log)
+        return new_log
 
 # =============================================
 # SUNUCU BAŞLATMA

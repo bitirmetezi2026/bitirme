@@ -179,3 +179,27 @@ class DailySummaryResponse(BaseModel):
     target_fat: float
     target_carbs: float
 
+class PeriodicSummaryResponse(DailySummaryResponse):
+    date: str
+
+# ========================
+# GUNLUK KAYIT (DAILY LOG) SEMALARI
+# ========================
+class DailyLogCreate(BaseModel):
+    date: str  # YYYY-MM-DD
+    total_calories_eaten: float = 0.0
+    net_calories: float = 0.0
+    sports_calories_burned: float = 0.0
+    protein: float = 0.0
+    fat: float = 0.0
+    carbs: float = 0.0
+
+class DailyLogResponse(DailyLogCreate):
+    id: int
+    user_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
