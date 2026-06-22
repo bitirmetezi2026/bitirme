@@ -1926,7 +1926,9 @@ fun MacroProgressCard(consumedProtein: Float, targetProtein: Float, consumedFat:
 
 @Composable
 fun HomeScreen() {
-    var selectedDate by remember { mutableStateOf("") }
+    var selectedDate by remember { 
+        mutableStateOf(java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())) 
+    }
     var exerciseList by remember { mutableStateOf<List<ExerciseEntry>>(emptyList()) }
     var dailySummary by remember { mutableStateOf<DailySummaryResponse?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -1945,12 +1947,11 @@ fun HomeScreen() {
         }
     }
     
-    androidx.compose.runtime.LaunchedEffect(PersistenceManager.dataVersion.intValue) {
+    androidx.compose.runtime.LaunchedEffect(PersistenceManager.dataVersion.intValue, selectedDate) {
         try {
             val token = SessionManager.token ?: return@LaunchedEffect
-            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
             val summary = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                RetrofitClient.instance.getDailySummary(token, today)
+                RetrofitClient.instance.getDailySummary(token, selectedDate)
             }
             dailySummary = summary
         } catch (e: Exception) {
