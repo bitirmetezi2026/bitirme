@@ -1656,7 +1656,18 @@ fun RecipeCard(
                             }
                         }
                     } else {
-                        Text(recipe.calories, color = PrimaryGreen, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        val kcalVal = Regex("(\\d+)\\s*kcal", RegexOption.IGNORE_CASE).find(recipe.calories)?.groupValues?.get(1) ?: "0"
+                        val displayKcal = if (kcalVal != "0") "$kcalVal kcal" else recipe.calories
+                        Text(displayKcal, color = PrimaryGreen, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            val fakeMacros = listOf("Protein: 0g", "Yağ: 0g", "Karb: 0g")
+                            for (macro in fakeMacros) {
+                                Surface(shape = RoundedCornerShape(6.dp), color = SoftWhite, border = BorderStroke(0.5.dp, Color.LightGray)) {
+                                    Text(macro, fontSize = 10.sp, color = TextGray, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                }
+                            }
+                        }
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1994,17 +2005,15 @@ fun HomeScreen() {
         item { Spacer(modifier = Modifier.height(16.dp)) }
         item {
             val s = dailySummary
-            if (s != null) {
-                MacroProgressCard(
-                    consumedProtein = s.total_protein,
-                    targetProtein = s.target_protein,
-                    consumedFat = s.total_fat,
-                    targetFat = s.target_fat,
-                    consumedCarbs = s.total_carbs,
-                    targetCarbs = s.target_carbs
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            MacroProgressCard(
+                consumedProtein = s?.total_protein ?: 0f,
+                targetProtein = s?.target_protein ?: 50f,
+                consumedFat = s?.total_fat ?: 0f,
+                targetFat = s?.target_fat ?: 50f,
+                consumedCarbs = s?.total_carbs ?: 0f,
+                targetCarbs = s?.target_carbs ?: 150f
+            )
+            Spacer(modifier = Modifier.height(16.dp))
         }
         item { DailyMealDetailCard(selectedDate = selectedDate) }
         item { Spacer(modifier = Modifier.height(16.dp)) }

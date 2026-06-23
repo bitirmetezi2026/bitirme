@@ -102,6 +102,7 @@ Kullanıcının elindeki malzemeler:
 - {ingredients_str}
 
 Lütfen sadece bu malzemeleri ağırlıklı kullanarak (yağ, tuz, baharat gibi temel mutfak ürünlerini dahil edebilirsin) yaratıcı ve kısıtlamaları ihlal etmeyen tarifler üret.
+ÖNEMLİ: Her tarifin 'calories' (kalori) alanı KESİNLİKLE şu formatta olmalıdır: 'XXX kcal | Protein: XXg | Yağ: XXg | Karb: XXg'. Bu formata tam olarak uyulmazsa sistem hata verir.
     """
     
     messages = [
